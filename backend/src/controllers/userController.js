@@ -1,5 +1,5 @@
-const { prisma } = require('../lib/prisma');
-const bcrypt = require('bcrypt');
+import { prisma } from '../lib/prisma.js';
+import bcrypt from 'bcrypt';
 
 const SALT_ROUNDS = 10;
 
@@ -60,4 +60,4 @@ async function createUser(req, res, next) {
   }
 }
 
-module.exports = { listUsers, createUser };
+export { listUsers, createUser };
