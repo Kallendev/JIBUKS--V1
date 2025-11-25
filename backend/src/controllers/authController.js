@@ -1,6 +1,7 @@
-const { prisma } = require('../lib/prisma');
-const bcrypt = require('bcrypt');
-const { generateToken, generateRefreshToken } = require('../middleware/auth');
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import { generateToken, generateRefreshToken, JWT_SECRET } from '../middleware/auth.js';
+import { prisma } from '../lib/prisma.js';
 
 const SALT_ROUNDS = 10;
 
@@ -132,10 +133,6 @@ async function refreshToken(req, res, next) {
       return res.status(400).json({ error: 'refreshToken required' });
     }
 
-    // In production, verify refresh token and check blacklist
-    const jwt = require('jsonwebtoken');
-    const { JWT_SECRET } = require('../middleware/auth');
-
     try {
       const decoded = jwt.verify(refreshToken, JWT_SECRET);
       const user = await prisma.user.findUnique({ where: { id: decoded.id } });
@@ -199,7 +196,7 @@ async function logout(req, res, next) {
   }
 }
 
-module.exports = {
+export {
   login,
   oauth2Login,
   auth0Callback,
