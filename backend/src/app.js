@@ -15,7 +15,14 @@ app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
     ? ['https://your-production-domain.com'] 
-    : ['http://localhost:3000', 'exp://localhost:8081', 'exp://192.168.0.114:8081'],
+    : [
+        'http://localhost:4000', 
+        'http://10.0.2.2:4000',
+        'exp://localhost:8081', 
+        'exp://10.0.2.2:8081',
+        'http://localhost:8081',
+        'http://10.0.2.2:8081'
+      ],
   credentials: true
 }));
 

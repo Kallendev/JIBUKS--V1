@@ -39,74 +39,64 @@ async function login(req, res, next) {
 }
 
 /**
- * Auth0 callback handler
- * In production, Auth0 will redirect to /auth/callback with a code
+ * Register new user with email/password
  */
-async function auth0Callback(req, res, next) {
+async function register(req, res, next) {
   try {
-    const { code, state } = req.query;
-    if (!code) {
-      return res.status(400).json({ error: 'Missing authorization code' });
-    }
-
-    // In a real setup, exchange code for tokens from Auth0
-    // For now, this is a placeholder
-    res.json({ message: 'Auth0 callback received. Exchange code for tokens in production.' });
-  } catch (err) {
-    next(err);
-  }
-}
-
-/**
- * OAuth2 login/signup endpoint (Auth0 profile exchange)
- * Call this after receiving Auth0 ID token from mobile app
- */
-async function oauth2Login(req, res, next) {
-  try {
-    const { auth0Id, email, name, tenantId } = req.body;
-    if (!auth0Id || !email) {
-      return res.status(400).json({ error: 'auth0Id and email required' });
-    }
-
-    // Try to find existing user with auth0_id
-    let user = await prisma.user.findUnique({ where: { auth0Id } });
+    const { firstName, lastName, email, phone, password, confirmPassword, tenantSlug } = req.body;
     
-    if (user) {
-      // User exists, return token
-      const accessToken = generateToken(user);
-      const refreshToken = generateRefreshToken(user);
-
-      return res.json({
-        accessToken,
-        refreshToken,
-        user: { id: user.id, email: user.email, name: user.name, tenantId: user.tenantId },
-      });
+    // Validate required fields
+    if (!firstName || !lastName || !email || !password || !confirmPassword) {
+      return res.status(400).json({ error: 'All fields are required' });
     }
 
-    // Create new user (auto-signup)
-    // If no tenant_id provided, create or use default tenant
-    let finalTenantId = tenantId;
-    if (!finalTenantId) {
-      // Create a default tenant for this user
-      const tenant = await prisma.tenant.create({
+    // Validate password confirmation
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: 'Passwords do not match' });
+    }
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(409).json({ error: 'User already exists with this email' });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+
+    let tenant;
+
+    // If tenantSlug is provided, try to join existing tenant
+    if (tenantSlug) {
+      tenant = await prisma.tenant.findUnique({ 
+        where: { slug: tenantSlug } 
+      });
+      
+      if (!tenant) {
+        return res.status(404).json({ error: 'Tenant not found. Please check the tenant slug and try again.' });
+      }
+    } else {
+      // Create a new tenant for this user
+      tenant = await prisma.tenant.create({
         data: {
-          name: email.split('@')[0],
+          name: `${firstName} ${lastName}`,
           slug: email.split('@')[0],
           ownerEmail: email,
         },
       });
-      finalTenantId = tenant.id;
     }
 
-    user = await prisma.user.create({
+    // Create user record
+    const user = await prisma.user.create({
       data: {
-        tenantId: finalTenantId,
+        tenantId: tenant.id,
         email,
-        name: name || email,
-        auth0Id,
+        name: `${firstName} ${lastName}`,
+        password: hashedPassword,
       },
     });
 
+    // Generate tokens
     const accessToken = generateToken(user);
     const refreshToken = generateRefreshToken(user);
 
@@ -167,7 +157,6 @@ async function getCurrentUser(req, res, next) {
         id: true,
         email: true,
         name: true,
-        auth0Id: true,
         tenantId: true,
         avatarUrl: true,
         createdAt: true,
@@ -197,9 +186,8 @@ async function logout(req, res, next) {
 }
 
 export {
+  register,
   login,
-  oauth2Login,
-  auth0Callback,
   refreshToken,
   getCurrentUser,
   logout,

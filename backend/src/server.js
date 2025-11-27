@@ -2,7 +2,7 @@ import 'dotenv/config';
 import app from './app.js';
 import { prisma } from './lib/prisma.js';
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 4001;
 
 // Graceful shutdown handler
 const gracefulShutdown = async () => {

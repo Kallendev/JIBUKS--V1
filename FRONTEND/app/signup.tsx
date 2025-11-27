@@ -1,15 +1,12 @@
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'expo-router'
-//import { useDispatch } from 'react-redux'
 import { Ionicons } from '@expo/vector-icons'
-// import { useRegisterMutation } from '../src/store/slices/authApiSlice'
-// import { setCredentials } from '../src/store/slices/authSlice'
+import { useAuth } from '@/contexts/AuthContext'
 
 const Signup = () => {
   const router = useRouter()
-  // const dispatch = useDispatch()
-  // const [register, { isLoading, error }] = useRegisterMutation()
+  const { register, isLoading, error, clearError } = useAuth()
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -21,14 +18,14 @@ const Signup = () => {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
 
   // Show error alert when registration fails
-  // useEffect(() => {
-  //   if (error) {
-  //     Alert.alert('Registration Error', error?.data?.message || 'Registration failed')
-  //   }
-  // }, [error])
+  useEffect(() => {
+    if (error) {
+      Alert.alert('Registration Error', error)
+      clearError()
+    }
+  }, [error])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -49,30 +46,27 @@ const Signup = () => {
       return
     }
 
-    // Prepare data for backend (match backend expected field names)
+    // Prepare data for backend
     const registrationData = {
       firstName: formData.firstName,
       lastName: formData.lastName,
       email: formData.email,
-      phone: formData.phoneNumber, // Backend expects 'phone', not 'phoneNumber'
+      phone: formData.phoneNumber,
       password: formData.password,
       confirmPassword: formData.confirmPassword
     }
 
     try {
-      // const result = await register(registrationData).unwrap()
+      await register(registrationData)
       
-      // Store credentials in Redux
-      // dispatch(setCredentials({
-      //   user: result.data.user,
-      //   token: result.data.token
-      // }))
+      Alert.alert('Success', 'Registration successful!', [
+        {
+          text: 'OK',
+          onPress: () => router.replace('/(tabs)')
+        }
+      ])
       
-      Alert.alert('Success', 'Registration successful!')
-      // Navigate to next screen (email verification, dashboard, etc.)
-      // router.push('/email-verification')
-      
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error)
       // Error is handled by useEffect above
     }
