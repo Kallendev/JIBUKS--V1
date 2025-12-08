@@ -1,24 +1,31 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Use 10.0.2.2 for Android emulator, localhost for iOS simulator/web
+// Use your local network IP for physical devices
+// Use 10.0.2.2 for Android emulator, localhost for iOS simulator
 const getBaseUrl = () => {
+  // For physical devices, use your local network IP
+  const LOCAL_IP = '192.168.0.102';
+  const PORT = '4001';
+  
   if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:4001/api';
+    // Use local IP for physical device, 10.0.2.2 for emulator
+    return `http://${LOCAL_IP}:${PORT}/api`;
   }
-  return 'http://localhost:4001/api';
+  // iOS and web
+  return `http://${LOCAL_IP}:${PORT}/api`;
 };
 
 const API_BASE_URL = getBaseUrl();
 
 // TypeScript interfaces
 export interface User {
-  id: string;
+  id: number;
   email: string;
-  firstName: string;
-  lastName: string;
-  phone?: string;
-  role?: string;
+  name: string | null;
+  tenantId: number | null;
+  avatarUrl?: string;
+  createdAt?: string;
 }
 
 export interface LoginCredentials {
@@ -36,17 +43,13 @@ export interface RegisterData {
 }
 
 export interface AuthResponse {
-  success: boolean;
-  data: {
-    user: User;
-    token: string;
-  };
-  message?: string;
+  accessToken: string;
+  refreshToken: string;
+  user: User;
 }
 
 export interface ApiError {
-  message: string;
-  errors?: Record<string, string[]>;
+  error: string;
 }
 
 // Helper function to get auth headers
@@ -86,18 +89,17 @@ class ApiService {
 
       if (!response.ok) {
         throw {
-          message: data.message || 'An error occurred',
-          errors: data.errors,
+          error: data.error || 'An error occurred',
         } as ApiError;
       }
 
       return data as T;
     } catch (error: any) {
-      if (error.message && error.errors !== undefined) {
+      if (error.error) {
         throw error as ApiError;
       }
       throw {
-        message: error.message || 'Network error. Please check your connection.',
+        error: error.message || 'Network error. Please check your connection.',
       } as ApiError;
     }
   }
@@ -109,9 +111,10 @@ class ApiService {
       body: JSON.stringify(credentials),
     });
 
-    // Store token
-    if (response.data.token) {
-      await AsyncStorage.setItem('authToken', response.data.token);
+    // Store tokens
+    if (response.accessToken) {
+      await AsyncStorage.setItem('authToken', response.accessToken);
+      await AsyncStorage.setItem('refreshToken', response.refreshToken);
     }
 
     return response;
@@ -123,28 +126,32 @@ class ApiService {
       body: JSON.stringify(data),
     });
 
-    // Store token
-    if (response.data.token) {
-      await AsyncStorage.setItem('authToken', response.data.token);
+    // Store tokens
+    if (response.accessToken) {
+      await AsyncStorage.setItem('authToken', response.accessToken);
+      await AsyncStorage.setItem('refreshToken', response.refreshToken);
     }
 
     return response;
   }
 
-  async getCurrentUser(): Promise<{ success: boolean; data: { user: User } }> {
-    return this.request<{ success: boolean; data: { user: User } }>('/auth/me', {
+  async getCurrentUser(): Promise<User> {
+    return this.request<User>('/auth/me', {
       method: 'GET',
     });
   }
 
-  async refreshToken(): Promise<AuthResponse> {
-    const response = await this.request<AuthResponse>('/auth/refresh', {
+  async refreshToken(): Promise<{ accessToken: string }> {
+    const refreshToken = await AsyncStorage.getItem('refreshToken');
+    
+    const response = await this.request<{ accessToken: string }>('/auth/refresh-token', {
       method: 'POST',
+      body: JSON.stringify({ refreshToken }),
     });
 
-    // Update token
-    if (response.data.token) {
-      await AsyncStorage.setItem('authToken', response.data.token);
+    // Update access token
+    if (response.accessToken) {
+      await AsyncStorage.setItem('authToken', response.accessToken);
     }
 
     return response;
@@ -156,8 +163,9 @@ class ApiService {
         method: 'POST',
       });
     } finally {
-      // Always remove token, even if request fails
+      // Always remove tokens, even if request fails
       await AsyncStorage.removeItem('authToken');
+      await AsyncStorage.removeItem('refreshToken');
     }
   }
 }
