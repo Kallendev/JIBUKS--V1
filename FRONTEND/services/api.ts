@@ -1,22 +1,51 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-// Use your local network IP for physical devices
-// Use 10.0.2.2 for Android emulator, localhost for iOS simulator
-const getBaseUrl = () => {
-  // For physical devices, use your local network IP
-  const LOCAL_IP = '192.168.0.102';
-  const PORT = '4001';
-  
-  if (Platform.OS === 'android') {
-    // Use local IP for physical device, 10.0.2.2 for emulator
-    return `http://${LOCAL_IP}:${PORT}/api`;
+// Get environment variables
+const getEnvVar = (key: string, defaultValue: string = ''): string => {
+  // @ts-ignore - Expo injects these at build time
+  return Constants.expoConfig?.extra?.[key] || process.env[key] || defaultValue;
+};
+
+const LOCAL_IP = getEnvVar('EXPO_PUBLIC_LOCAL_IP', '192.168.0.102');
+const API_PORT = getEnvVar('EXPO_PUBLIC_API_PORT', '4001');
+
+// Build API base URL based on platform
+const getBaseUrl = (): string => {
+  // If full URL is provided, use it
+  const fullUrl = getEnvVar('EXPO_PUBLIC_API_URL');
+  if (fullUrl) {
+    return fullUrl;
   }
-  // iOS and web
-  return `http://${LOCAL_IP}:${PORT}/api`;
+
+  // Otherwise, construct URL based on platform
+  if (Platform.OS === 'android') {
+    // Check if running on emulator or physical device
+    // Emulator: use 10.0.2.2
+    // Physical device: use local network IP
+    const isEmulator = Constants.isDevice === false;
+    const host = isEmulator ? '10.0.2.2' : LOCAL_IP;
+    return `http://${host}:${API_PORT}/api`;
+  }
+  
+  if (Platform.OS === 'ios') {
+    // iOS simulator uses localhost
+    // Physical device uses local network IP
+    const isSimulator = Constants.isDevice === false;
+    const host = isSimulator ? 'localhost' : LOCAL_IP;
+    return `http://${host}:${API_PORT}/api`;
+  }
+  
+  // Web uses localhost
+  return `http://localhost:${API_PORT}/api`;
 };
 
 const API_BASE_URL = getBaseUrl();
+
+console.log('🌐 API Base URL:', API_BASE_URL);
+console.log('📱 Platform:', Platform.OS);
+console.log('🔧 Device:', Constants.isDevice ? 'Physical' : 'Simulator/Emulator');
 
 // TypeScript interfaces
 export interface User {
@@ -77,6 +106,8 @@ class ApiService {
     const headers = await getAuthHeaders();
 
     try {
+      console.log(`📡 ${options.method || 'GET'} ${url}`);
+      
       const response = await fetch(url, {
         ...options,
         headers: {
@@ -95,6 +126,8 @@ class ApiService {
 
       return data as T;
     } catch (error: any) {
+      console.error('❌ API Error:', error);
+      
       if (error.error) {
         throw error as ApiError;
       }
@@ -111,7 +144,6 @@ class ApiService {
       body: JSON.stringify(credentials),
     });
 
-    // Store tokens
     if (response.accessToken) {
       await AsyncStorage.setItem('authToken', response.accessToken);
       await AsyncStorage.setItem('refreshToken', response.refreshToken);
@@ -126,7 +158,6 @@ class ApiService {
       body: JSON.stringify(data),
     });
 
-    // Store tokens
     if (response.accessToken) {
       await AsyncStorage.setItem('authToken', response.accessToken);
       await AsyncStorage.setItem('refreshToken', response.refreshToken);
@@ -149,7 +180,6 @@ class ApiService {
       body: JSON.stringify({ refreshToken }),
     });
 
-    // Update access token
     if (response.accessToken) {
       await AsyncStorage.setItem('authToken', response.accessToken);
     }
@@ -163,13 +193,11 @@ class ApiService {
         method: 'POST',
       });
     } finally {
-      // Always remove tokens, even if request fails
       await AsyncStorage.removeItem('authToken');
       await AsyncStorage.removeItem('refreshToken');
     }
   }
 }
 
-// Export singleton instance
 export const apiService = new ApiService(API_BASE_URL);
 export default apiService;

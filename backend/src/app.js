@@ -7,25 +7,42 @@ import morgan from 'morgan';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 
-
 const app = express();
+
+// Get configuration from environment
+const LOCAL_IP = process.env.LOCAL_NETWORK_IP || '192.168.0.102';
+const PORT = process.env.PORT || '4001';
+
+// Build dynamic CORS origins
+const buildCorsOrigins = () => {
+  const origins = [
+    // Localhost for iOS simulator and web
+    'http://localhost:4001',
+    'http://localhost:8081',
+    `http://localhost:${PORT}`,
+    
+    // Android emulator special IP
+    'http://10.0.2.2:4001',
+    'http://10.0.2.2:8081',
+    `http://10.0.2.2:${PORT}`,
+    'exp://10.0.2.2:8081',
+    
+    // Local network IP (for physical devices)
+    `http://${LOCAL_IP}:4001`,
+    `http://${LOCAL_IP}:8081`,
+    `http://${LOCAL_IP}:${PORT}`,
+    `exp://${LOCAL_IP}:8081`,
+  ];
+
+  return process.env.NODE_ENV === 'production' 
+    ? ['https://your-production-domain.com'] 
+    : origins;
+};
 
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-production-domain.com'] 
-    : [
-        'http://localhost:4001',
-        'http://localhost:8081',
-        'http://192.168.0.102:4001',
-        'http://192.168.0.102:8081',
-        'http://10.0.2.2:4001',
-        'http://10.0.2.2:8081',
-        'exp://localhost:8081',
-        'exp://10.0.2.2:8081',
-        'exp://192.168.0.102:8081'
-      ],
+  origin: buildCorsOrigins(),
   credentials: true
 }));
 
@@ -38,7 +55,14 @@ app.use(express.urlencoded({ extended: true }));
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    network: {
+      localIP: LOCAL_IP,
+      port: PORT
+    }
+  });
 });
 
 // Root endpoint
@@ -47,7 +71,6 @@ app.get('/', (req, res) => res.json({ ok: true, message: 'JIBUKS backend' }));
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-
 
 // 404 handler
 app.use('*', (req, res) => {
