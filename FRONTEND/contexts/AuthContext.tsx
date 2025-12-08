@@ -39,12 +39,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (token) {
         // Verify token is still valid by fetching user
-        const response = await apiService.getCurrentUser();
-        setUser(response.data.user);
+        const userData = await apiService.getCurrentUser();
+        setUser(userData);
       }
     } catch (error) {
       // Token is invalid or expired
       await AsyncStorage.removeItem('authToken');
+      await AsyncStorage.removeItem('refreshToken');
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -57,10 +58,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
       
       const response = await apiService.login(credentials);
-      setUser(response.data.user);
+      setUser(response.user);
     } catch (error) {
       const apiError = error as ApiError;
-      setError(apiError.message);
+      setError(apiError.error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -73,10 +74,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
       
       const response = await apiService.register(data);
-      setUser(response.data.user);
+      setUser(response.user);
     } catch (error) {
       const apiError = error as ApiError;
-      setError(apiError.message);
+      setError(apiError.error);
       throw error;
     } finally {
       setIsLoading(false);
