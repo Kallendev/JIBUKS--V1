@@ -42,7 +42,7 @@ const Login = () => {
       Alert.alert('Success', 'Login successful!', [
         {
           text: 'OK',
-          onPress: () => router.replace('/(tabs)')
+          onPress: () => router.replace('/welcome')
         }
       ])
       
