@@ -62,7 +62,7 @@ const Signup = () => {
       Alert.alert('Success', 'Registration successful!', [
         {
           text: 'OK',
-          onPress: () => router.replace('/(tabs)')
+          onPress: () => router.replace('/welcome')
         }
       ])
       
