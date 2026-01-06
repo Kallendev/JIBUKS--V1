@@ -6,6 +6,7 @@ import morgan from 'morgan';
 // Import routes
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
+import familyRoutes from './routes/family.js';
 
 const app = express();
 
@@ -20,13 +21,13 @@ const buildCorsOrigins = () => {
     'http://localhost:4001',
     'http://localhost:8081',
     `http://localhost:${PORT}`,
-    
+
     // Android emulator special IP
     'http://10.0.2.2:4001',
     'http://10.0.2.2:8081',
     `http://10.0.2.2:${PORT}`,
     'exp://10.0.2.2:8081',
-    
+
     // Local network IP (for physical devices)
     `http://${LOCAL_IP}:4001`,
     `http://${LOCAL_IP}:8081`,
@@ -34,8 +35,8 @@ const buildCorsOrigins = () => {
     `exp://${LOCAL_IP}:8081`,
   ];
 
-  return process.env.NODE_ENV === 'production' 
-    ? ['https://your-production-domain.com'] 
+  return process.env.NODE_ENV === 'production'
+    ? ['https://your-production-domain.com']
     : origins;
 };
 
@@ -55,8 +56,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
     network: {
       localIP: LOCAL_IP,
@@ -65,12 +66,20 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Serve static files (uploads)
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
+
 // Root endpoint
 app.get('/', (req, res) => res.json({ ok: true, message: 'JIBUKS backend' }));
 
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/family', familyRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -80,7 +89,7 @@ app.use('*', (req, res) => {
 // Error handler
 app.use((err, req, res, next) => {
   console.error(err);
-  res.status(err.status || 500).json({ 
+  res.status(err.status || 500).json({
     error: err.message || 'Internal Server Error',
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });

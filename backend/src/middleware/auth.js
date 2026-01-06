@@ -33,6 +33,7 @@ function generateToken(user) {
       id: user.id,
       email: user.email,
       tenantId: user.tenantId,
+      role: user.role,
       auth0Id: user.auth0Id,
     },
     JWT_SECRET,

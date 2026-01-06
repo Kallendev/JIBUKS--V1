@@ -35,6 +35,7 @@ model User {
   password  String?
   avatarUrl String?
   isActive  Boolean @default(true)
+  role      Role    @default(MEMBER)
 
   // Relations
   tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -45,4 +46,12 @@ model User {
   @@index([tenantId])
   @@index([auth0Id])
   @@map("users")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  PARENT
+  CHILD
+  MEMBER
 }

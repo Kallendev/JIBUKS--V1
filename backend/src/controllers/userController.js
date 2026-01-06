@@ -6,6 +6,9 @@ const SALT_ROUNDS = 10;
 async function listUsers(req, res, next) {
   try {
     const users = await prisma.user.findMany({
+      where: {
+        tenantId: req.user.tenantId
+      },
       select: {
         id: true,
         name: true,

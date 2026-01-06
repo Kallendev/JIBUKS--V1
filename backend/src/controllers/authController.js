@@ -31,7 +31,13 @@ async function login(req, res, next) {
     res.json({
       accessToken,
       refreshToken,
-      user: { id: user.id, email: user.email, name: user.name, tenantId: user.tenantId },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        tenantId: user.tenantId,
+        role: user.role
+      },
     });
   } catch (err) {
     next(err);
@@ -44,7 +50,7 @@ async function login(req, res, next) {
 async function register(req, res, next) {
   try {
     const { firstName, lastName, email, phone, password, confirmPassword, tenantSlug } = req.body;
-    
+
     // Validate required fields
     if (!firstName || !lastName || !email || !password || !confirmPassword) {
       return res.status(400).json({ error: 'All fields are required' });
@@ -67,11 +73,12 @@ async function register(req, res, next) {
     let tenant;
 
     // If tenantSlug is provided, try to join existing tenant
+    let role = 'MEMBER';
     if (tenantSlug) {
-      tenant = await prisma.tenant.findUnique({ 
-        where: { slug: tenantSlug } 
+      tenant = await prisma.tenant.findUnique({
+        where: { slug: tenantSlug }
       });
-      
+
       if (!tenant) {
         return res.status(404).json({ error: 'Tenant not found. Please check the tenant slug and try again.' });
       }
@@ -84,6 +91,7 @@ async function register(req, res, next) {
           ownerEmail: email,
         },
       });
+      role = 'OWNER';
     }
 
     // Create user record
@@ -93,6 +101,7 @@ async function register(req, res, next) {
         email,
         name: `${firstName} ${lastName}`,
         password: hashedPassword,
+        role: role,
       },
     });
 
@@ -103,7 +112,13 @@ async function register(req, res, next) {
     res.status(201).json({
       accessToken,
       refreshToken,
-      user: { id: user.id, email: user.email, name: user.name, tenantId: user.tenantId },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        tenantId: user.tenantId,
+        role: user.role
+      },
     });
   } catch (err) {
     if (err.code === 'P2002') {
@@ -158,6 +173,7 @@ async function getCurrentUser(req, res, next) {
         email: true,
         name: true,
         tenantId: true,
+        role: true,
         avatarUrl: true,
         createdAt: true,
       },
