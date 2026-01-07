@@ -33,6 +33,8 @@ export default function RootLayout() {
           <Stack.Screen name="goal-success" options={{ headerShown: false }} />
           <Stack.Screen name="connect-mobile-money" options={{ headerShown: false }} />
           <Stack.Screen name="business-onboarding" options={{ headerShown: false }} />
+          <Stack.Screen name="contact-information" options={{ headerShown: false }} />
+          <Stack.Screen name="financial-setup" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>

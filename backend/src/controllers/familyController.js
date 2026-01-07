@@ -220,39 +220,39 @@ export async function createBudgets(req, res, next) {
 
         // Use transaction to ensure all save or none
         const result = await prisma.$transaction(async (tx) => {
-            // Optional: clear existing for this month if needed, or upsert.
-            // For MVP, we'll just create new entries or update existing ones for "default" (null month)
+            const budgetClient = tx.budget || tx.Budget;
+            if (!budgetClient) {
+                console.error('Available models in tx:', Object.keys(tx).filter(k => !k.startsWith('$')));
+                throw new Error('Budget model not found in Prisma transaction context');
+            }
 
             const savedBudgets = [];
             for (const item of budgets) {
                 if (!item.amount) continue;
 
-                // Check if exists
-                const existing = await tx.budget.findFirst({
+                const budget = await budgetClient.upsert({
                     where: {
+                        // We need a unique constraint for upsert to work in this way
+                        // For now, since Budget might not have a unique constraint on (tenantId, category, month),
+                        // we will stick to findFirst then update/create but with the safety check.
+                        id: (await budgetClient.findFirst({
+                            where: {
+                                tenantId,
+                                category: item.category,
+                                month: null
+                            },
+                            select: { id: true }
+                        }))?.id || -1
+                    },
+                    update: { amount: parseFloat(item.amount) },
+                    create: {
                         tenantId,
                         category: item.category,
-                        month: null // Default/recurring budget
+                        amount: parseFloat(item.amount),
+                        month: null
                     }
                 });
-
-                if (existing) {
-                    const updated = await tx.budget.update({
-                        where: { id: existing.id },
-                        data: { amount: parseFloat(item.amount) }
-                    });
-                    savedBudgets.push(updated);
-                } else {
-                    const created = await tx.budget.create({
-                        data: {
-                            tenantId,
-                            category: item.category,
-                            amount: parseFloat(item.amount),
-                            month: null
-                        }
-                    });
-                    savedBudgets.push(created);
-                }
+                savedBudgets.push(budget);
             }
             return savedBudgets;
         });

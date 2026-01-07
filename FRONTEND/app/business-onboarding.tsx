@@ -83,8 +83,8 @@ export default function BusinessOnboardingScreen() {
         // Save business data logic would go here
         console.log({ businessName, industry, salesType });
 
-        // Navigate to main tabs
-        router.replace('/(tabs)');
+        // Navigate to contact information
+        router.push('/contact-information');
     };
 
     const handleBack = () => {

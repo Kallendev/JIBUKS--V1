@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
   password TEXT,
   avatar_url TEXT,
   is_active BOOLEAN DEFAULT true,
+  role TEXT DEFAULT 'MEMBER',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
