@@ -84,8 +84,8 @@ export default function FamilySetupScreen() {
       // Update family name
       await apiService.updateFamily({ name: familyName });
 
-      // Save family data and navigate to main tabs
-      router.replace('/(tabs)');
+      // Navigate to income sources screen
+      router.push('/income-sources');
     } catch (error) {
       alert('Failed to save family setup');
       console.error(error);
