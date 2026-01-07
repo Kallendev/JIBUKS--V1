@@ -38,23 +38,36 @@ export default function FamilyDreamsScreen() {
     }
   };
 
-  const handleCreateGoal = () => {
+  const handleCreateGoal = async () => {
     if (!goalName.trim()) {
       alert('Please enter a goal name');
       return;
     }
-    
-    // TODO: Save goal to backend
-    console.log('Creating goal:', {
-      goalName,
-      targetAmount,
-      targetDate,
-      monthlyContribution,
-      selectedMember,
-    });
 
-    // Navigate to success screen
-    router.push('/goal-success');
+    if (!monthlyContribution.trim()) {
+      alert('Please enter a monthly contribution amount');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await apiService.createGoal({
+        name: goalName,
+        targetAmount: parseFloat(targetAmount),
+        targetDate: targetDate, // Ideally use a date picker, but text is fine for prototype if backend handles it or we ensure format
+        monthlyContribution: parseFloat(monthlyContribution),
+        assignedUserId: selectedMember
+      });
+
+      // Navigate to success screen
+      // @ts-ignore
+      router.push('/goal-success');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to create goal');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSkip = () => {
@@ -72,7 +85,7 @@ export default function FamilyDreamsScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >

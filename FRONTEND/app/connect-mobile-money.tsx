@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from 'rea
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import apiService from '@/services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -14,17 +15,35 @@ export default function ConnectMobileMoneyScreen() {
     router.back();
   };
 
-  const handleConnect = () => {
+  /* import apiService from '@/services/api'; included above */
+  const [loading, setLoading] = useState(false);
+
+  const handleConnect = async () => {
     if (!selectedProvider) {
       alert('Please select a mobile money provider');
       return;
     }
 
-    // TODO: Implement mobile money connection logic
-    console.log('Connecting to:', selectedProvider);
-    
-    // Navigate to main tabs
-    router.replace('/(tabs)');
+    try {
+      setLoading(true);
+      // Save mobile money preference to family metadata
+      await apiService.updateFamily({
+        metadata: {
+          mobileMoneyProvider: selectedProvider,
+          mobileMoneyConnected: true,
+          mobileMoneyConnectedAt: new Date().toISOString()
+        }
+      });
+
+      // Navigate to main tabs
+      // @ts-ignore
+      router.replace('/(tabs)');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to connect mobile money settings');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSkip = () => {
@@ -45,7 +64,7 @@ export default function ConnectMobileMoneyScreen() {
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={28} color="#f59e0b" />
         </TouchableOpacity>
-        
+
         <Text style={styles.headerTitle}>Connect Mobile Money</Text>
         <Text style={styles.subtitle}>Auto-track transactions</Text>
       </LinearGradient>

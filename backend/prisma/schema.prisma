@@ -19,6 +19,8 @@ model Tenant {
 
   // Relations
   users User[]
+  goals Goal[]
+  budgets Budget[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -39,6 +41,7 @@ model User {
 
   // Relations
   tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignedGoals Goal[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -54,4 +57,47 @@ enum Role {
   PARENT
   CHILD
   MEMBER
+}
+
+model Goal {
+  id                  Int      @id @default(autoincrement())
+  tenantId            Int
+  name                String
+  targetAmount        Decimal
+  currentAmount       Decimal  @default(0)
+  targetDate          DateTime?
+  monthlyContribution Decimal?
+  assignedUserId      Int?
+  status              GoalStatus @default(ACTIVE)
+
+  // Relations
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignedUser        User?    @relation(fields: [assignedUserId], references: [id])
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("goals")
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+model Budget {
+  id        Int     @id @default(autoincrement())
+  tenantId  Int
+  category  String
+  amount    Decimal
+  month     String? // e.g. "2023-10" or null for recurring/default
+  
+  // Relations
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("budgets")
 }

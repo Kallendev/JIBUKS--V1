@@ -54,11 +54,20 @@ export async function updateFamily(req, res, next) {
             return res.status(403).json({ error: 'Not part of any family' });
         }
 
+        // Fetch current tenant to merge metadata if needed
+        const currentTenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+
+        let newMetadata = undefined;
+        if (metadata && currentTenant) {
+            const existingMetadata = currentTenant.metadata || {};
+            newMetadata = { ...existingMetadata, ...metadata };
+        }
+
         const updatedFamily = await prisma.tenant.update({
             where: { id: tenantId },
             data: {
                 ...(name && { name }),
-                ...(metadata && { metadata }),
+                ...(newMetadata && { metadata: newMetadata }),
             }
         });
 
@@ -101,7 +110,7 @@ export async function createMember(req, res, next) {
             // Construct public URL
             const protocol = req.protocol;
             const host = req.get('host');
-            avatarUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+            avatarUrl = `/uploads/${req.file.filename}`;
             console.log('Image uploaded successfully:', avatarUrl);
         } else {
             console.log('No image uploaded');
@@ -143,6 +152,130 @@ export async function createMember(req, res, next) {
         }
 
         res.status(201).json(newUser);
+    } catch (err) {
+        next(err);
+    }
+}
+
+/**
+ * Create a new goal (family dream)
+ */
+export async function createGoal(req, res, next) {
+    try {
+        const { tenantId } = req.user;
+        const { name, targetAmount, targetDate, monthlyContribution, assignedUserId } = req.body;
+
+        if (!tenantId) return res.status(403).json({ error: 'Not part of a family' });
+        if (!name || !targetAmount) return res.status(400).json({ error: 'Name and target amount are required' });
+
+        const goal = await prisma.goal.create({
+            data: {
+                tenantId,
+                name,
+                targetAmount,
+                targetDate: targetDate ? new Date(targetDate) : null,
+                monthlyContribution: monthlyContribution ? parseFloat(monthlyContribution) : null,
+                assignedUserId: assignedUserId ? parseInt(assignedUserId) : null,
+            }
+        });
+
+        res.status(201).json(goal);
+    } catch (err) {
+        next(err);
+    }
+}
+
+/**
+ * Get family goals
+ */
+export async function getGoals(req, res, next) {
+    try {
+        const { tenantId } = req.user;
+        if (!tenantId) return res.status(403).json({ error: 'Not part of a family' });
+
+        const goals = await prisma.goal.findMany({
+            where: { tenantId },
+            include: { assignedUser: { select: { id: true, name: true, avatarUrl: true } } },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        res.json(goals);
+    } catch (err) {
+        next(err);
+    }
+}
+
+/**
+ * Save monthly budgets
+ */
+export async function createBudgets(req, res, next) {
+    try {
+        const { tenantId } = req.user;
+        const { budgets } = req.body; // Expects array of { category, amount }
+
+        if (!tenantId) return res.status(403).json({ error: 'Not part of a family' });
+        if (!Array.isArray(budgets) || budgets.length === 0) {
+            return res.status(400).json({ error: 'Budgets array is required' });
+        }
+
+        // Use transaction to ensure all save or none
+        const result = await prisma.$transaction(async (tx) => {
+            // Optional: clear existing for this month if needed, or upsert.
+            // For MVP, we'll just create new entries or update existing ones for "default" (null month)
+
+            const savedBudgets = [];
+            for (const item of budgets) {
+                if (!item.amount) continue;
+
+                // Check if exists
+                const existing = await tx.budget.findFirst({
+                    where: {
+                        tenantId,
+                        category: item.category,
+                        month: null // Default/recurring budget
+                    }
+                });
+
+                if (existing) {
+                    const updated = await tx.budget.update({
+                        where: { id: existing.id },
+                        data: { amount: parseFloat(item.amount) }
+                    });
+                    savedBudgets.push(updated);
+                } else {
+                    const created = await tx.budget.create({
+                        data: {
+                            tenantId,
+                            category: item.category,
+                            amount: parseFloat(item.amount),
+                            month: null
+                        }
+                    });
+                    savedBudgets.push(created);
+                }
+            }
+            return savedBudgets;
+        });
+
+        res.status(201).json(result);
+    } catch (err) {
+        next(err);
+    }
+}
+
+/**
+ * Get monthly budgets
+ */
+export async function getBudgets(req, res, next) {
+    try {
+        const { tenantId } = req.user;
+        if (!tenantId) return res.status(403).json({ error: 'Not part of a family' });
+
+        const budgets = await prisma.budget.findMany({
+            where: { tenantId }
+        });
+
+        res.json(budgets);
     } catch (err) {
         next(err);
     }

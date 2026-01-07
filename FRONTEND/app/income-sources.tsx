@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-nati
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import apiService from '@/services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -20,13 +21,33 @@ export default function IncomeSourcesScreen() {
     );
   };
 
-  const handleContinue = () => {
+  /* import apiService from '@/services/api'; included above */
+  const [loading, setLoading] = useState(false);
+
+  const handleContinue = async () => {
     if (selectedSources.length === 0) {
       alert('Please select at least one income source to continue.');
       return;
     }
-    // Navigate to spending categories screen
-    router.push('/spending-categories');
+
+    try {
+      setLoading(true);
+      // Save income sources to family metadata
+      await apiService.updateFamily({
+        metadata: {
+          incomeSources: selectedSources
+        }
+      });
+
+      // Navigate to spending categories screen
+      // @ts-ignore
+      router.push('/spending-categories');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to save income sources');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSkip = () => {

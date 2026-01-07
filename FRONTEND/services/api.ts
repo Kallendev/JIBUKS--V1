@@ -8,8 +8,8 @@ const getEnvVar = (key: string, defaultValue: string = ''): string => {
   return Constants.expoConfig?.extra?.[key] || process.env[key] || defaultValue;
 };
 
-const LOCAL_IP = getEnvVar('EXPO_PUBLIC_LOCAL_IP', '192.168.0.102');
-const API_PORT = getEnvVar('EXPO_PUBLIC_API_PORT', '4001');
+const LOCAL_IP = getEnvVar('EXPO_PUBLIC_LOCAL_IP', '192.168.1.68');
+const API_PORT = getEnvVar('EXPO_PUBLIC_API_PORT', '3001');
 
 // Build API base URL based on platform
 const getBaseUrl = (): string => {
@@ -86,7 +86,6 @@ export interface ApiError {
 const getAuthHeaders = async () => {
   const token = await AsyncStorage.getItem('authToken');
   return {
-    'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 };
@@ -104,17 +103,27 @@ class ApiService {
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    const headers = await getAuthHeaders();
+    const authHeaders = await getAuthHeaders();
+
+    // Merge headers: Auth < explicit options
+    // We construct a temporary headers object
+    const headers: any = {
+      ...authHeaders,
+      ...options.headers,
+    };
+
+    // If Content-Type is not set, and body is a string (likely JSON), default it.
+    // If body is FormData (object), do NOT set Content-Type, let fetch handle it (boundary).
+    if (!headers['Content-Type'] && typeof options.body === 'string') {
+      headers['Content-Type'] = 'application/json';
+    }
 
     try {
       console.log(`📡 ${options.method || 'GET'} ${url}`);
 
       const response = await fetch(url, {
         ...options,
-        headers: {
-          ...headers,
-          ...options.headers,
-        },
+        headers,
       });
 
       const data = await response.json();
@@ -204,7 +213,7 @@ class ApiService {
     return this.request('/family');
   }
 
-  async updateFamily(data: { name: string }): Promise<any> {
+  async updateFamily(data: { name?: string; metadata?: any }): Promise<any> {
     return this.request('/family', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -220,6 +229,30 @@ class ApiService {
       headers: isFormData ? {} : { 'Content-Type': 'application/json' }, // Fetch handles Content-Type for FormData
       body: isFormData ? data : JSON.stringify(data),
     });
+  }
+
+  async createGoal(data: any): Promise<any> {
+    return this.request('/family/goals', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async saveBudgets(budgets: { category: string; amount: string }[]): Promise<any> {
+    return this.request('/family/budgets', {
+      method: 'POST',
+      body: JSON.stringify({ budgets }),
+    });
+  }
+
+  getImageUrl(path: string | null | undefined): string | undefined {
+    if (!path) return undefined;
+    if (path.startsWith('http')) return path;
+    // Remove /api suffix to get root URL
+    const rootUrl = this.baseUrl.endsWith('/api')
+      ? this.baseUrl.slice(0, -4)
+      : this.baseUrl;
+    return `${rootUrl}${path.startsWith('/') ? '' : '/'}${path}`;
   }
 }
 

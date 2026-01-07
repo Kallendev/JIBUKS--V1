@@ -14,6 +14,7 @@ export default function GoalSuccessScreen() {
   };
 
   const handleContinue = () => {
+    // @ts-ignore
     router.push('/connect-mobile-money');
   };
 
@@ -42,14 +43,14 @@ export default function GoalSuccessScreen() {
 
           {/* Action Buttons */}
           <View style={styles.actionsContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={handleCreateAnother}
               activeOpacity={0.7}
             >
               <Text style={styles.actionText}>Create another goal</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               onPress={handleContinue}
               activeOpacity={0.7}
             >

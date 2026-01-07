@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Keyboa
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import apiService from '@/services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -57,9 +58,32 @@ export default function MonthlyBudgetsScreen() {
     );
   };
 
-  const handleContinue = () => {
-    // Navigate to family dreams (savings goals)
-    router.push('/family-dreams');
+  /* import apiService from '@/services/api'; included above */
+  const [loading, setLoading] = useState(false);
+
+  const handleContinue = async () => {
+    // Filter out empty budgets or zero
+    const activeBudgets = budgets.filter(b => b.amount && parseFloat(b.amount) > 0);
+
+    if (activeBudgets.length === 0) {
+      // Allow skipping if no budgets set? Maybe prompt?
+      // For now, let's just proceed or maybe alert if they should set at least one since they selected categories
+      // But continuing is fine
+    }
+
+    try {
+      setLoading(true);
+      await apiService.saveBudgets(activeBudgets);
+
+      // Navigate to family dreams (savings goals)
+      // @ts-ignore
+      router.push('/family-dreams');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to save budgets');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSkip = () => {
@@ -71,7 +95,7 @@ export default function MonthlyBudgetsScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
