@@ -58,7 +58,7 @@ export default function FamilySetupScreen() {
           email: u.email,
           status: 'Active',
           isCurrentUser: u.email === user?.email,
-          avatar: u.avatarUrl
+          avatar: apiService.getImageUrl(u.avatarUrl)
         }));
 
         setFamilyMembers(members);
@@ -84,8 +84,9 @@ export default function FamilySetupScreen() {
       // Update family name
       await apiService.updateFamily({ name: familyName });
 
-      // Save family data and navigate to main tabs
-      router.replace('/(tabs)');
+      // Navigate to income sources screen
+      // @ts-ignore
+      router.push('/income-sources');
     } catch (error) {
       alert('Failed to save family setup');
       console.error(error);

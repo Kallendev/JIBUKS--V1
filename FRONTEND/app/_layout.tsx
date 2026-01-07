@@ -26,6 +26,12 @@ export default function RootLayout() {
           <Stack.Screen name="family-setup" options={{ headerShown: false }} />
           <Stack.Screen name="add-family-member" options={{ headerShown: false }} />
           <Stack.Screen name="invite-success" options={{ headerShown: false }} />
+          <Stack.Screen name="income-sources" options={{ headerShown: false }} />
+          <Stack.Screen name="spending-categories" options={{ headerShown: false }} />
+          <Stack.Screen name="monthly-budgets" options={{ headerShown: false }} />
+          <Stack.Screen name="family-dreams" options={{ headerShown: false }} />
+          <Stack.Screen name="goal-success" options={{ headerShown: false }} />
+          <Stack.Screen name="connect-mobile-money" options={{ headerShown: false }} />
           <Stack.Screen name="business-onboarding" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
