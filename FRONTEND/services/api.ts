@@ -9,7 +9,7 @@ const getEnvVar = (key: string, defaultValue: string = ''): string => {
 };
 
 const LOCAL_IP = getEnvVar('EXPO_PUBLIC_LOCAL_IP', '192.168.1.68');
-const API_PORT = getEnvVar('EXPO_PUBLIC_API_PORT', '3001');
+const API_PORT = getEnvVar('EXPO_PUBLIC_API_PORT', '4001');
 
 // Build API base URL based on platform
 const getBaseUrl = (): string => {
