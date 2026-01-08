@@ -13,7 +13,11 @@
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "^2.2.0",
+<<<<<<< HEAD
     "@react-native-picker/picker": "2.11.1",
+=======
+    "@react-native-picker/picker": "^2.11.4",
+>>>>>>> b338baf0a0918491d6da7ea8e20c4f9bef39190b
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",

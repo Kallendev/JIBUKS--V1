@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,125 +8,41 @@ import {
   SafeAreaView,
   Alert,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { FamilySettings as FamilySettingsType, FamilyMemberDetailed, PendingInvitation } from '@/types/family';
-
-// TODO: Replace with actual API call when backend is ready
-// See FRONTEND/docs/API_CONTRACTS.md for API specifications
-const mockFamilySettings: FamilySettingsType = {
-  family: {
-    id: 1,
-    name: "The Johnsons",
-    avatar: null,
-    createdAt: "2025-12-01",
-    totalMembers: 4,
-    activeGoals: 3,
-    creatorId: 1
-  },
-  members: [
-    {
-      id: '1',
-      name: "John Doe",
-      email: "john@example.com",
-      role: "Parent",
-      status: "Active",
-      avatar: null,
-      joinedAt: "2025-12-01",
-      permissions: {
-        canView: true,
-        canAdd: true,
-        canEdit: true,
-        canDelete: true,
-        canViewBudgets: true,
-        canEditBudgets: true,
-        canViewGoals: true,
-        canContributeGoals: true,
-        canInvite: true,
-        canRemove: true
-      }
-    },
-    {
-      id: '2',
-      name: "Sarah Johnson",
-      email: "sarah@example.com",
-      role: "Child",
-      status: "Active",
-      avatar: null,
-      joinedAt: "2025-12-01",
-      permissions: {
-        canView: true,
-        canAdd: false,
-        canEdit: false,
-        canDelete: false,
-        canViewBudgets: true,
-        canEditBudgets: false,
-        canViewGoals: true,
-        canContributeGoals: true,
-        canInvite: false,
-        canRemove: false
-      }
-    },
-    {
-      id: '3',
-      name: "Emily Johnson",
-      email: "emily@example.com",
-      role: "Child",
-      status: "Active",
-      avatar: null,
-      joinedAt: "2025-12-15",
-      permissions: {
-        canView: true,
-        canAdd: false,
-        canEdit: false,
-        canDelete: false,
-        canViewBudgets: true,
-        canEditBudgets: false,
-        canViewGoals: true,
-        canContributeGoals: false,
-        canInvite: false,
-        canRemove: false
-      }
-    },
-    {
-      id: '4',
-      name: "Mike Johnson",
-      email: "mike@example.com",
-      role: "Guardian",
-      status: "Active",
-      avatar: null,
-      joinedAt: "2025-12-20",
-      permissions: {
-        canView: true,
-        canAdd: true,
-        canEdit: true,
-        canDelete: false,
-        canViewBudgets: true,
-        canEditBudgets: true,
-        canViewGoals: true,
-        canContributeGoals: true,
-        canInvite: false,
-        canRemove: false
-      }
-    }
-  ],
-  pendingInvitations: [
-    {
-      id: 101,
-      email: "david@example.com",
-      role: "Child",
-      sentAt: "2026-01-05",
-      status: "Pending"
-    }
-  ]
-};
+import apiService from '@/services/api';
 
 export default function FamilySettings() {
   const router = useRouter();
-  const [settings, setSettings] = useState<FamilySettingsType>(mockFamilySettings);
-  const currentUserId = '1'; // TODO: Get from AuthContext
+  const [settings, setSettings] = useState<FamilySettingsType | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+
+  useEffect(() => {
+    loadFamilySettings();
+  }, []);
+
+  const loadFamilySettings = async () => {
+    try {
+      setLoading(true);
+      const [settingsData, userData] = await Promise.all([
+        apiService.getFamilySettings(),
+        apiService.getCurrentUser()
+      ]);
+
+      setSettings(settingsData);
+      setCurrentUserId(userData.id.toString());
+    } catch (error: any) {
+      console.error('Error loading family settings:', error);
+      Alert.alert('Error', error.error || 'Failed to load family settings');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -151,6 +67,7 @@ export default function FamilySettings() {
           onPress: () => {
             // TODO: Implement API call to cancel invitation
             // DELETE /api/family/invitations/:id
+            if (!settings) return;
             setSettings({
               ...settings,
               pendingInvitations: settings.pendingInvitations.filter(inv => inv.id !== invitationId)
@@ -171,11 +88,14 @@ export default function FamilySettings() {
         {
           text: 'Leave',
           style: 'destructive',
-          onPress: () => {
-            // TODO: Implement API call to leave family
-            // DELETE /api/family/leave
-            Alert.alert('Success', 'You have left the family');
-            router.replace('/welcome');
+          onPress: async () => {
+            try {
+              await apiService.leaveFamily();
+              Alert.alert('Success', 'You have left the family');
+              router.replace('/welcome');
+            } catch (error: any) {
+              Alert.alert('Error', error.error || 'Failed to leave family');
+            }
           }
         }
       ]
@@ -191,11 +111,14 @@ export default function FamilySettings() {
         {
           text: 'Delete Forever',
           style: 'destructive',
-          onPress: () => {
-            // TODO: Implement API call to delete family
-            // DELETE /api/family
-            Alert.alert('Success', 'Family deleted');
-            router.replace('/welcome');
+          onPress: async () => {
+            try {
+              await apiService.deleteFamily();
+              Alert.alert('Success', 'Family deleted');
+              router.replace('/welcome');
+            } catch (error: any) {
+              Alert.alert('Error', error.error || 'Failed to delete family');
+            }
           }
         }
       ]
@@ -224,6 +147,64 @@ export default function FamilySettings() {
     );
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#1e3a8a', '#2563eb']}
+          style={styles.header}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Family Settings</Text>
+            <View style={styles.placeholder} />
+          </View>
+        </LinearGradient>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#2563eb" />
+          <Text style={{ marginTop: 16, color: '#64748b' }}>Loading family settings...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!settings) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#1e3a8a', '#2563eb']}
+          style={styles.header}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Family Settings</Text>
+            <View style={styles.placeholder} />
+          </View>
+        </LinearGradient>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Ionicons name="alert-circle" size={64} color="#ef4444" />
+          <Text style={{ marginTop: 16, color: '#64748b', fontSize: 16 }}>Failed to load family settings</Text>
+          <TouchableOpacity
+            onPress={loadFamilySettings}
+            style={{ marginTop: 16, backgroundColor: '#2563eb', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Blue Gradient Header */}
@@ -247,14 +228,14 @@ export default function FamilySettings() {
         {/* Family Profile Section */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Family Profile</Text>
-          
+
           <View style={styles.profileSection}>
             <TouchableOpacity
               style={styles.avatarContainer}
               onPress={() => router.push('/edit-family-profile')}
             >
               {settings.family.avatar ? (
-                <Image source={{ uri: settings.family.avatar }} style={styles.avatar} />
+                <Image source={{ uri: apiService.getImageUrl(settings.family.avatar) }} style={styles.avatar} />
               ) : (
                 <View style={styles.avatarPlaceholder}>
                   <Ionicons name="people" size={40} color="#2563eb" />
@@ -294,7 +275,7 @@ export default function FamilySettings() {
         {/* Family Members Section */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Family Members</Text>
-          
+
           {settings.members.map((member) => (
             <TouchableOpacity
               key={member.id}
@@ -312,7 +293,7 @@ export default function FamilySettings() {
             >
               <View style={styles.memberLeft}>
                 {member.avatar ? (
-                  <Image source={{ uri: member.avatar }} style={styles.memberAvatar} />
+                  <Image source={{ uri: apiService.getImageUrl(member.avatar) }} style={styles.memberAvatar} />
                 ) : (
                   <View style={styles.memberAvatarPlaceholder}>
                     <Text style={styles.memberAvatarText}>
@@ -349,7 +330,7 @@ export default function FamilySettings() {
         {/* Pending Invitations Section */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Pending Invitations</Text>
-          
+
           {settings.pendingInvitations.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="mail-outline" size={48} color="#cbd5e1" />
@@ -386,7 +367,7 @@ export default function FamilySettings() {
         {/* Danger Zone Section */}
         <View style={styles.card}>
           <Text style={[styles.cardTitle, { color: '#ef4444' }]}>Danger Zone</Text>
-          
+
           <TouchableOpacity
             style={styles.dangerButton}
             onPress={handleLeaveFamily}

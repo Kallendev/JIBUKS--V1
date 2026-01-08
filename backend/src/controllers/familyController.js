@@ -93,6 +93,17 @@ export async function createMember(req, res, next) {
             return res.status(403).json({ error: 'Not part of any family' });
         }
 
+        // Check permissions
+        const creator = await prisma.user.findUnique({
+            where: { id: req.user.id },
+            select: { role: true, permissions: true }
+        });
+        const perms = creator.permissions || getDefaultPermissions(creator.role);
+
+        if (!perms.canAdd && !perms.canInvite) {
+            return res.status(403).json({ error: 'You do not have permission to add members' });
+        }
+
         if (!email || !password || !name) {
             return res.status(400).json({ error: 'Name, email and password are required' });
         }
@@ -162,10 +173,22 @@ export async function createMember(req, res, next) {
  */
 export async function createGoal(req, res, next) {
     try {
-        const { tenantId } = req.user;
+        const { tenantId, id: userId } = req.user;
         const { name, targetAmount, targetDate, monthlyContribution, assignedUserId } = req.body;
 
         if (!tenantId) return res.status(403).json({ error: 'Not part of a family' });
+
+        // Check permissions
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true, permissions: true }
+        });
+
+        const perms = user.permissions || getDefaultPermissions(user.role);
+        if (!perms.canContributeGoals) {
+            return res.status(403).json({ error: 'You do not have permission to create goals' });
+        }
+
         if (!name || !targetAmount) return res.status(400).json({ error: 'Name and target amount are required' });
 
         const goal = await prisma.goal.create({
@@ -190,8 +213,19 @@ export async function createGoal(req, res, next) {
  */
 export async function getGoals(req, res, next) {
     try {
-        const { tenantId } = req.user;
+        const { tenantId, id: userId } = req.user;
         if (!tenantId) return res.status(403).json({ error: 'Not part of a family' });
+
+        // Check if user can view goals
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true, permissions: true }
+        });
+        const perms = user.permissions || getDefaultPermissions(user.role);
+
+        if (!perms.canViewGoals) {
+            return res.status(403).json({ error: 'You do not have permission to view goals' });
+        }
 
         const goals = await prisma.goal.findMany({
             where: { tenantId },
@@ -210,10 +244,22 @@ export async function getGoals(req, res, next) {
  */
 export async function createBudgets(req, res, next) {
     try {
-        const { tenantId } = req.user;
+        const { tenantId, id: userId } = req.user;
         const { budgets } = req.body; // Expects array of { category, amount }
 
         if (!tenantId) return res.status(403).json({ error: 'Not part of a family' });
+
+        // Check permissions
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true, permissions: true }
+        });
+        const perms = user.permissions || getDefaultPermissions(user.role);
+
+        if (!perms.canEditBudgets) {
+            return res.status(403).json({ error: 'You do not have permission to edit budgets' });
+        }
+
         if (!Array.isArray(budgets) || budgets.length === 0) {
             return res.status(400).json({ error: 'Budgets array is required' });
         }
@@ -268,8 +314,19 @@ export async function createBudgets(req, res, next) {
  */
 export async function getBudgets(req, res, next) {
     try {
-        const { tenantId } = req.user;
+        const { tenantId, id: userId } = req.user;
         if (!tenantId) return res.status(403).json({ error: 'Not part of a family' });
+
+        // Check permissions
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true, permissions: true }
+        });
+        const perms = user.permissions || getDefaultPermissions(user.role);
+
+        if (!perms.canViewBudgets) {
+            return res.status(403).json({ error: 'You do not have permission to view budgets' });
+        }
 
         const budgets = await prisma.budget.findMany({
             where: { tenantId }
@@ -279,4 +336,74 @@ export async function getBudgets(req, res, next) {
     } catch (err) {
         next(err);
     }
+}
+
+/**
+ * Helper function to get default permissions based on role
+ */
+function getDefaultPermissions(role) {
+    const defaults = {
+        OWNER: {
+            canView: true,
+            canAdd: true,
+            canEdit: true,
+            canDelete: true,
+            canViewBudgets: true,
+            canEditBudgets: true,
+            canViewGoals: true,
+            canContributeGoals: true,
+            canInvite: true,
+            canRemove: true
+        },
+        ADMIN: {
+            canView: true,
+            canAdd: true,
+            canEdit: true,
+            canDelete: true,
+            canViewBudgets: true,
+            canEditBudgets: true,
+            canViewGoals: true,
+            canContributeGoals: true,
+            canInvite: true,
+            canRemove: false
+        },
+        PARENT: {
+            canView: true,
+            canAdd: true,
+            canEdit: true,
+            canDelete: false,
+            canViewBudgets: true,
+            canEditBudgets: true,
+            canViewGoals: true,
+            canContributeGoals: true,
+            canInvite: false,
+            canRemove: false
+        },
+        CHILD: {
+            canView: true,
+            canAdd: false,
+            canEdit: false,
+            canDelete: false,
+            canViewBudgets: true,
+            canEditBudgets: false,
+            canViewGoals: true,
+            canContributeGoals: true,
+            canInvite: false,
+            canRemove: false
+        },
+        MEMBER: {
+            canView: true,
+            canAdd: false,
+            canEdit: false,
+            canDelete: false,
+            canViewBudgets: true,
+            canEditBudgets: false,
+            canViewGoals: true,
+            canContributeGoals: false,
+            canInvite: false,
+            canRemove: false
+        }
+    };
+
+    return defaults[role] || defaults.MEMBER;
 }

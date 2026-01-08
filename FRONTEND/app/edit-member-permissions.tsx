@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,22 +9,24 @@ import {
   Alert,
   Image,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
 import { FamilyRole, MemberPermissions } from '@/types/family';
+import apiService from '@/services/api';
 
-// TODO: Replace with actual API call when backend is ready
-// GET /api/family/members/:id/permissions
-const mockMemberData = {
-  id: '2',
-  name: "Sarah Johnson",
-  email: "sarah@example.com",
-  role: "Child" as FamilyRole,
-  avatar: null,
-  permissions: {
+export default function EditMemberPermissions() {
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const memberId = params.memberId as string;
+
+  const [member, setMember] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedRole, setSelectedRole] = useState<FamilyRole>('MEMBER');
+  const [permissions, setPermissions] = useState<MemberPermissions>({
     canView: true,
     canAdd: false,
     canEdit: false,
@@ -32,30 +34,40 @@ const mockMemberData = {
     canViewBudgets: true,
     canEditBudgets: false,
     canViewGoals: true,
-    canContributeGoals: true,
+    canContributeGoals: false,
     canInvite: false,
     canRemove: false,
-  }
-};
-
-export default function EditMemberPermissions() {
-  const router = useRouter();
-  const params = useLocalSearchParams();
-  const memberId = params.memberId as string;
-
-  const [member, setMember] = useState(mockMemberData);
-  const [selectedRole, setSelectedRole] = useState<FamilyRole>(member.role);
-  const [permissions, setPermissions] = useState<MemberPermissions>(member.permissions);
+  });
   const [hasChanges, setHasChanges] = useState(false);
 
-  const roles: FamilyRole[] = ['Parent', 'Child', 'Guardian', 'Other'];
+  const roles: FamilyRole[] = ['PARENT', 'CHILD', 'MEMBER', 'ADMIN'];
+
+  useEffect(() => {
+    loadMemberDetails();
+  }, [memberId]);
+
+  const loadMemberDetails = async () => {
+    try {
+      setLoading(true);
+      const data = await apiService.getMemberDetails(memberId);
+      setMember(data);
+      setSelectedRole(data.role);
+      setPermissions(data.permissions);
+    } catch (error: any) {
+      console.error('Error loading member details:', error);
+      Alert.alert('Error', error.error || 'Failed to load member details');
+      router.back();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRoleChange = (role: FamilyRole) => {
     setSelectedRole(role);
     setHasChanges(true);
-    
+
     // Auto-adjust permissions based on role
-    if (role === 'Parent') {
+    if (role === 'ADMIN') {
       setPermissions({
         canView: true,
         canAdd: true,
@@ -66,9 +78,22 @@ export default function EditMemberPermissions() {
         canViewGoals: true,
         canContributeGoals: true,
         canInvite: true,
-        canRemove: true,
+        canRemove: false,
       });
-    } else if (role === 'Child') {
+    } else if (role === 'PARENT') {
+      setPermissions({
+        canView: true,
+        canAdd: true,
+        canEdit: true,
+        canDelete: false,
+        canViewBudgets: true,
+        canEditBudgets: true,
+        canViewGoals: true,
+        canContributeGoals: true,
+        canInvite: false,
+        canRemove: false,
+      });
+    } else if (role === 'CHILD') {
       setPermissions({
         canView: true,
         canAdd: false,
@@ -81,6 +106,20 @@ export default function EditMemberPermissions() {
         canInvite: false,
         canRemove: false,
       });
+    } else {
+      // Default / USER / MEMBER
+      setPermissions({
+        canView: true,
+        canAdd: false,
+        canEdit: false,
+        canDelete: false,
+        canViewBudgets: true,
+        canEditBudgets: false,
+        canViewGoals: true,
+        canContributeGoals: false,
+        canInvite: false,
+        canRemove: false,
+      });
     }
   };
 
@@ -89,16 +128,30 @@ export default function EditMemberPermissions() {
     setHasChanges(true);
   };
 
-  const handleSave = () => {
-    // TODO: Implement API call to save permissions
-    // PUT /api/family/members/:id/permissions
-    // PUT /api/family/members/:id/role
-    Alert.alert('Success', 'Member permissions updated successfully!', [
-      {
-        text: 'OK',
-        onPress: () => router.back()
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+
+      // Update role if changed
+      if (selectedRole !== member.role) {
+        await apiService.updateMemberRole(memberId, selectedRole);
       }
-    ]);
+
+      // Update permissions
+      await apiService.updateMemberPermissions(memberId, permissions);
+
+      Alert.alert('Success', 'Member permissions updated successfully!', [
+        {
+          text: 'OK',
+          onPress: () => router.back()
+        }
+      ]);
+    } catch (error: any) {
+      console.error('Error saving permissions:', error);
+      Alert.alert('Error', error.error || 'Failed to update permissions');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRemoveMember = () => {
@@ -110,15 +163,18 @@ export default function EditMemberPermissions() {
         {
           text: 'Remove',
           style: 'destructive',
-          onPress: () => {
-            // TODO: Implement API call to remove member
-            // DELETE /api/family/members/:id
-            Alert.alert('Success', 'Member removed from family', [
-              {
-                text: 'OK',
-                onPress: () => router.back()
-              }
-            ]);
+          onPress: async () => {
+            try {
+              await apiService.removeFamilyMember(memberId);
+              Alert.alert('Success', 'Member removed from family', [
+                {
+                  text: 'OK',
+                  onPress: () => router.back()
+                }
+              ]);
+            } catch (error: any) {
+              Alert.alert('Error', error.error || 'Failed to remove member');
+            }
           }
         }
       ]
@@ -152,6 +208,32 @@ export default function EditMemberPermissions() {
       </View>
     );
   };
+
+  if (loading || !member) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#1e3a8a', '#2563eb']}
+          style={styles.header}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Loading...</Text>
+            <View style={styles.placeholder} />
+          </View>
+        </LinearGradient>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#2563eb" />
+          <Text style={{ marginTop: 16, color: '#64748b' }}>Loading member details...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -190,7 +272,7 @@ export default function EditMemberPermissions() {
         <View style={styles.card}>
           <View style={styles.memberInfo}>
             {member.avatar ? (
-              <Image source={{ uri: member.avatar }} style={styles.avatar} />
+              <Image source={{ uri: apiService.getImageUrl(member.avatar) }} style={styles.avatar} />
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <Text style={styles.avatarText}>

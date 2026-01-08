@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,25 +10,41 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-
-// TODO: Replace with actual API call when backend is ready
-// GET /api/family/settings
-const mockFamilyProfile = {
-  id: 1,
-  name: "The Johnsons",
-  avatar: null,
-};
+import apiService from '@/services/api';
 
 export default function EditFamilyProfile() {
   const router = useRouter();
-  const [familyName, setFamilyName] = useState(mockFamilyProfile.name);
-  const [avatarUri, setAvatarUri] = useState<string | null>(mockFamilyProfile.avatar);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [familyName, setFamilyName] = useState('');
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+
+  useEffect(() => {
+    loadFamilyProfile();
+  }, []);
+
+  const loadFamilyProfile = async () => {
+    try {
+      setLoading(true);
+      const data = await apiService.getFamilySettings();
+      setFamilyName(data.family.name);
+      if (data.family.avatar) {
+        setAvatarUri(apiService.getImageUrl(data.family.avatar) || null);
+      }
+    } catch (error: any) {
+      console.error('Error loading family profile:', error);
+      Alert.alert('Error', error.error || 'Failed to load family profile');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleNameChange = (text: string) => {
     setFamilyName(text);
@@ -38,7 +54,7 @@ export default function EditFamilyProfile() {
   const pickImage = async () => {
     // Request permission
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
+
     if (status !== 'granted') {
       Alert.alert(
         'Permission Required',
@@ -64,7 +80,7 @@ export default function EditFamilyProfile() {
   const takePhoto = async () => {
     // Request permission
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    
+
     if (status !== 'granted') {
       Alert.alert(
         'Permission Required',
@@ -115,21 +131,27 @@ export default function EditFamilyProfile() {
     );
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!familyName.trim()) {
       Alert.alert('Error', 'Family name cannot be empty');
       return;
     }
 
-    // TODO: Implement API call to save family profile
-    // PUT /api/family
-    // Body: { name: familyName, avatar: avatarUri }
-    Alert.alert('Success', 'Family profile updated successfully!', [
-      {
-        text: 'OK',
-        onPress: () => router.back()
-      }
-    ]);
+    try {
+      setSaving(true);
+      await apiService.updateFamilyProfile(familyName, avatarUri);
+      Alert.alert('Success', 'Family profile updated successfully!', [
+        {
+          text: 'OK',
+          onPress: () => router.back()
+        }
+      ]);
+    } catch (error: any) {
+      console.error('Error saving family profile:', error);
+      Alert.alert('Error', error.error || 'Failed to update family profile');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -146,6 +168,32 @@ export default function EditFamilyProfile() {
       router.back();
     }
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#1e3a8a', '#2563eb']}
+          style={styles.header}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Edit Family Profile</Text>
+            <View style={styles.placeholder} />
+          </View>
+        </LinearGradient>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#2563eb" />
+          <Text style={{ marginTop: 16, color: '#64748b' }}>Loading family profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -213,18 +261,27 @@ export default function EditFamilyProfile() {
           {/* Action Buttons */}
           <View style={styles.buttonContainer}>
             <TouchableOpacity
-              style={[styles.saveButton, !hasChanges && styles.saveButtonDisabled]}
+              style={[styles.saveButton, (!hasChanges || saving) && styles.saveButtonDisabled]}
               onPress={handleSave}
-              disabled={!hasChanges}
+              disabled={!hasChanges || saving}
             >
               <LinearGradient
-                colors={hasChanges ? ['#2563eb', '#1e3a8a'] : ['#cbd5e1', '#94a3b8']}
+                colors={(hasChanges && !saving) ? ['#2563eb', '#1e3a8a'] : ['#cbd5e1', '#94a3b8']}
                 style={styles.buttonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Ionicons name="save" size={20} color="#fff" />
-                <Text style={styles.buttonText}>Save Changes</Text>
+                {saving ? (
+                  <>
+                    <ActivityIndicator size="small" color="#fff" />
+                    <Text style={styles.buttonText}>Saving...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="save" size={20} color="#fff" />
+                    <Text style={styles.buttonText}>Save Changes</Text>
+                  </>
+                )}
               </LinearGradient>
             </TouchableOpacity>
 

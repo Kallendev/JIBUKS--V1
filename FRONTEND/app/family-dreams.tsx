@@ -15,6 +15,11 @@ interface FamilyMember {
 
 export default function FamilyDreamsScreen() {
   const router = useRouter();
+  const [viewMode, setViewMode] = useState<'list' | 'create'>('list');
+  const [goals, setGoals] = useState<any[]>([]);
+  const [loadingGoals, setLoadingGoals] = useState(true);
+
+  // Create form states
   const [goalName, setGoalName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [targetDate, setTargetDate] = useState('');
@@ -24,8 +29,21 @@ export default function FamilyDreamsScreen() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    loadGoals();
     loadFamilyMembers();
   }, []);
+
+  const loadGoals = async () => {
+    try {
+      setLoadingGoals(true);
+      const goalsData = await apiService.getGoals();
+      setGoals(goalsData || []);
+    } catch (error) {
+      console.error('Failed to load goals:', error);
+    } finally {
+      setLoadingGoals(false);
+    }
+  };
 
   const loadFamilyMembers = async () => {
     try {
@@ -54,14 +72,22 @@ export default function FamilyDreamsScreen() {
       await apiService.createGoal({
         name: goalName,
         targetAmount: parseFloat(targetAmount),
-        targetDate: targetDate, // Ideally use a date picker, but text is fine for prototype if backend handles it or we ensure format
+        targetDate: targetDate,
         monthlyContribution: parseFloat(monthlyContribution),
         assignedUserId: selectedMember
       });
 
-      // Navigate to success screen
-      // @ts-ignore
-      router.push('/goal-success');
+      alert('Goal created successfully!');
+
+      // Reset form and reload goals
+      setGoalName('');
+      setTargetAmount('');
+      setTargetDate('');
+      setMonthlyContribution('');
+      setSelectedMember(null);
+
+      await loadGoals();
+      setViewMode('list');
     } catch (error) {
       console.error(error);
       alert('Failed to create goal');
@@ -71,17 +97,33 @@ export default function FamilyDreamsScreen() {
   };
 
   const handleSkip = () => {
-    router.replace('/(tabs)');
+    try {
+      (router.replace as any)('/(tabs)');
+    } catch (error) {
+      console.error('Navigation error:', error);
+    }
   };
 
   const handleBack = () => {
-    router.back();
+    if (viewMode === 'create') {
+      setViewMode('list');
+    } else {
+      router.back();
+    }
   };
 
   const updateAmount = (value: string, setter: (val: string) => void) => {
-    // Only allow numbers
     const numericAmount = value.replace(/[^0-9]/g, '');
     setter(numericAmount);
+  };
+
+  const calculateProgress = (current: number, target: number) => {
+    if (!target || target === 0) return 0;
+    return Math.min((current / target) * 100, 100);
+  };
+
+  const formatCurrency = (amount: number) => {
+    return `Ksh ${amount.toLocaleString()}`;
   };
 
   return (

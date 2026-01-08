@@ -23,28 +23,29 @@ model Tenant {
   budgets Budget[]
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("tenants")
 }
 
 model User {
-  id        Int     @id @default(autoincrement())
-  tenantId  Int?    @map("tenant_id")
-  name      String?
-  email     String  @unique
-  auth0Id   String? @unique @map("auth0_id")
-  password  String?
-  avatarUrl String? @map("avatar_url")
-  isActive  Boolean @default(true) @map("is_active")
-  role      Role    @default(MEMBER)
+  id          Int     @id @default(autoincrement())
+  tenantId    Int?    @map("tenant_id")
+  name        String?
+  email       String  @unique
+  auth0Id     String? @unique @map("auth0_id")
+  password    String?
+  avatarUrl   String? @map("avatar_url")
+  isActive    Boolean @default(true) @map("is_active")
+  role        Role    @default(MEMBER)
+  permissions Json?   // Stores member permissions as JSON
 
   // Relations
   tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   assignedGoals Goal[]
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@index([tenantId])
   @@index([auth0Id])

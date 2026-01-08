@@ -79,7 +79,7 @@ export interface BudgetProgress {
 }
 
 // Family Settings Types
-export type FamilyRole = 'Parent' | 'Child' | 'Guardian' | 'Other';
+export type FamilyRole = 'OWNER' | 'ADMIN' | 'PARENT' | 'CHILD' | 'MEMBER';
 
 export type MemberStatus = 'Active' | 'Pending' | 'Inactive';
 
