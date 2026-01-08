@@ -9,7 +9,7 @@ const getEnvVar = (key: string, defaultValue: string = ''): string => {
 };
 
 const LOCAL_IP = getEnvVar('EXPO_PUBLIC_LOCAL_IP', '192.168.1.68');
-const API_PORT = getEnvVar('EXPO_PUBLIC_API_PORT', '4001');
+const API_PORT = getEnvVar('EXPO_PUBLIC_API_PORT', '3001');
 
 // Build API base URL based on platform
 const getBaseUrl = (): string => {
@@ -136,7 +136,20 @@ class ApiService {
 
       return data as T;
     } catch (error: any) {
-      console.error('❌ API Error:', error);
+      // Don't log expected errors (user states that are normal)
+      const expectedErrors = [
+        'User is not part of any family',
+        'Not part of a family',
+        'No family found',
+      ];
+
+      const isExpectedError = expectedErrors.some(msg =>
+        error.error && error.error.includes(msg)
+      );
+
+      if (!isExpectedError) {
+        console.error('❌ API Error:', error);
+      }
 
       if (error.error) {
         throw error as ApiError;
@@ -238,10 +251,85 @@ class ApiService {
     });
   }
 
+  async getGoals(): Promise<any> {
+    return this.request('/family/goals');
+  }
+
   async saveBudgets(budgets: { category: string; amount: string }[]): Promise<any> {
     return this.request('/family/budgets', {
       method: 'POST',
       body: JSON.stringify({ budgets }),
+    });
+  }
+
+  async getBudgets(): Promise<any> {
+    return this.request('/family/budgets');
+  }
+
+  // Family Settings APIs
+  async getFamilySettings(): Promise<any> {
+    return this.request('/family/settings');
+  }
+
+  async getDashboardStats(): Promise<any> {
+    return this.request('/family/dashboard');
+  }
+
+  async getMemberDetails(memberId: string): Promise<any> {
+    return this.request(`/family/members/${memberId}`);
+  }
+
+  async updateMemberPermissions(memberId: string, permissions: any): Promise<any> {
+    return this.request(`/family/members/${memberId}/permissions`, {
+      method: 'PUT',
+      body: JSON.stringify({ permissions }),
+    });
+  }
+
+  async updateMemberRole(memberId: string, role: string): Promise<any> {
+    return this.request(`/family/members/${memberId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  async removeFamilyMember(memberId: string): Promise<any> {
+    return this.request(`/family/members/${memberId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async leaveFamily(): Promise<any> {
+    return this.request('/family/leave', {
+      method: 'DELETE',
+    });
+  }
+
+  async deleteFamily(): Promise<any> {
+    return this.request('/family', {
+      method: 'DELETE',
+    });
+  }
+
+  async updateFamilyProfile(name: string, avatarUri?: string | null): Promise<any> {
+    const formData = new FormData();
+    formData.append('name', name);
+
+    if (avatarUri && !avatarUri.startsWith('http')) {
+      const filename = avatarUri.split('/').pop() || 'avatar.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+      formData.append('avatar', {
+        uri: avatarUri,
+        name: filename,
+        type,
+      } as any);
+    }
+
+    return this.request('/family/profile', {
+      method: 'PUT',
+      body: formData,
     });
   }
 

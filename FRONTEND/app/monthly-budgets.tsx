@@ -28,11 +28,17 @@ export default function MonthlyBudgetsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const [budgets, setBudgets] = useState<BudgetItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingExisting, setLoadingExisting] = useState(true);
+
+  useEffect(() => {
+    loadExistingBudgets();
+  }, []);
 
   useEffect(() => {
     // Get selected categories from previous screen
     const categoriesParam = params.categories as string;
-    if (categoriesParam) {
+    if (categoriesParam && budgets.length === 0) {
       try {
         const selectedCategories = JSON.parse(categoriesParam);
         const initialBudgets = selectedCategories.map((cat: string) => ({
@@ -46,6 +52,26 @@ export default function MonthlyBudgetsScreen() {
     }
   }, [params.categories]);
 
+  const loadExistingBudgets = async () => {
+    try {
+      setLoadingExisting(true);
+      const existingBudgets = await apiService.getBudgets();
+
+      if (existingBudgets && existingBudgets.length > 0) {
+        const formattedBudgets = existingBudgets.map((b: any) => ({
+          category: b.category,
+          amount: b.amount.toString(),
+        }));
+        setBudgets(formattedBudgets);
+      }
+    } catch (error) {
+      console.error('Error loading budgets:', error);
+      // If no budgets exist, that's fine - user will create new ones
+    } finally {
+      setLoadingExisting(false);
+    }
+  };
+
   const updateBudgetAmount = (category: string, amount: string) => {
     // Only allow numbers
     const numericAmount = amount.replace(/[^0-9]/g, '');
@@ -58,36 +84,48 @@ export default function MonthlyBudgetsScreen() {
     );
   };
 
-  /* import apiService from '@/services/api'; included above */
-  const [loading, setLoading] = useState(false);
+  const calculateTotal = () => {
+    return budgets.reduce((sum, budget) => {
+      const amount = parseFloat(budget.amount) || 0;
+      return sum + amount;
+    }, 0);
+  };
 
   const handleContinue = async () => {
     // Filter out empty budgets or zero
     const activeBudgets = budgets.filter(b => b.amount && parseFloat(b.amount) > 0);
 
     if (activeBudgets.length === 0) {
-      // Allow skipping if no budgets set? Maybe prompt?
-      // For now, let's just proceed or maybe alert if they should set at least one since they selected categories
-      // But continuing is fine
+      alert('Please set at least one budget amount');
+      return;
     }
 
     try {
       setLoading(true);
       await apiService.saveBudgets(activeBudgets);
 
-      // Navigate to family dreams (savings goals)
-      // @ts-ignore
-      router.push('/family-dreams');
+      alert('Budgets saved successfully!');
+
+      // Navigate to family dreams (savings goals) or dashboard
+      try {
+        (router.push as any)('/family-dreams');
+      } catch (navError) {
+        (router.replace as any)('/(tabs)');
+      }
     } catch (error) {
       console.error(error);
-      alert('Failed to save budgets');
+      alert('Failed to save budgets. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleSkip = () => {
-    router.replace('/(tabs)');
+    try {
+      (router.replace as any)('/(tabs)');
+    } catch (error) {
+      console.error('Navigation error:', error);
+    }
   };
 
   const handleBack = () => {
@@ -121,42 +159,62 @@ export default function MonthlyBudgetsScreen() {
         <ScrollView showsVerticalScrollIndicator={false}>
           <Text style={styles.cardTitle}>Set comfortable spending limits</Text>
 
-          {/* Budget Input Fields */}
-          <View style={styles.budgetsContainer}>
-            {budgets.map((budget) => (
-              <View key={budget.category} style={styles.budgetItem}>
-                <Text style={styles.budgetLabel}>
-                  {categoryLabels[budget.category] || budget.category}
-                </Text>
-                <TextInput
-                  style={styles.budgetInput}
-                  placeholder="Ksh 0"
-                  placeholderTextColor="#d1d5db"
-                  value={budget.amount ? `Ksh ${budget.amount}` : ''}
-                  onChangeText={(text) => updateBudgetAmount(budget.category, text)}
-                  keyboardType="numeric"
-                />
+          {loadingExisting ? (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <Text style={{ color: '#6b7280', fontSize: 16 }}>Loading budgets...</Text>
+            </View>
+          ) : (
+            <>
+              {/* Budget Input Fields */}
+              <View style={styles.budgetsContainer}>
+                {budgets.map((budget) => (
+                  <View key={budget.category} style={styles.budgetItem}>
+                    <Text style={styles.budgetLabel}>
+                      {categoryLabels[budget.category] || budget.category}
+                    </Text>
+                    <TextInput
+                      style={styles.budgetInput}
+                      placeholder="Ksh 0"
+                      placeholderTextColor="#d1d5db"
+                      value={budget.amount ? `Ksh ${budget.amount}` : ''}
+                      onChangeText={(text) => updateBudgetAmount(budget.category, text)}
+                      keyboardType="numeric"
+                      editable={!loading}
+                    />
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
 
-          <Text style={styles.helperText}>
-            We'll alert you before you exceed your budgets
-          </Text>
+              {/* Total Budget Display */}
+              {budgets.length > 0 && (
+                <View style={styles.totalContainer}>
+                  <Text style={styles.totalLabel}>Total Monthly Budget</Text>
+                  <Text style={styles.totalAmount}>Ksh {calculateTotal().toLocaleString()}</Text>
+                </View>
+              )}
 
-          {/* Continue Button */}
-          <TouchableOpacity
-            style={styles.continueButton}
-            onPress={handleContinue}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.continueButtonText}>Continue</Text>
-          </TouchableOpacity>
+              <Text style={styles.helperText}>
+                We'll alert you before you exceed your budgets
+              </Text>
 
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Powered by Apbc</Text>
-          </View>
+              {/* Continue Button */}
+              <TouchableOpacity
+                style={[styles.continueButton, loading && styles.continueButtonDisabled]}
+                onPress={handleContinue}
+                activeOpacity={0.8}
+                disabled={loading}
+              >
+                <Text style={styles.continueButtonText}>
+                  {loading ? 'Saving...' : 'Continue'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Footer */}
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>Powered by Apbc</Text>
+              </View>
+            </>
+          )}
         </ScrollView>
       </View>
     </KeyboardAvoidingView>
@@ -252,10 +310,33 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  continueButtonDisabled: {
+    backgroundColor: '#94a3b8',
+    opacity: 0.6,
+  },
   continueButtonText: {
     color: '#ffffff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  totalContainer: {
+    backgroundColor: '#f0f9ff',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: '#2563eb',
+  },
+  totalLabel: {
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  totalAmount: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#1e3a8a',
   },
   footer: {
     alignItems: 'center',

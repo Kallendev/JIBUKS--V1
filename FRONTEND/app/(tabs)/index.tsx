@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,35 +7,132 @@ import {
   TouchableOpacity,
   Dimensions,
   SafeAreaView,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import apiService from '@/services/api';
 
 const { width } = Dimensions.get('window');
 
-// TODO: Replace with actual API call when backend is ready
-// See FRONTEND/docs/API_CONTRACTS.md for API specifications
-const mockFamilyData = {
-  familyName: "The Johnsons",
-  totalMembers: 4,
-  activeGoals: 3,
-  totalBudget: 150000,
-  monthlySpending: 87500,
-  recentGoals: [
-    { id: 1, name: "New Car Fund", target: 500000, current: 125000, deadline: "Dec 2026" },
-    { id: 2, name: "School Fees", target: 80000, current: 60000, deadline: "Jan 2026" },
-    { id: 3, name: "Vacation", target: 50000, current: 15000, deadline: "Jun 2026" }
-  ],
-  budgetOverview: [
-    { category: "Groceries", allocated: 40000, spent: 32000 },
-    { category: "Transport", allocated: 25000, spent: 18000 },
-    { category: "Utilities", allocated: 15000, spent: 12000 }
-  ]
-};
-
 export default function HomeScreen() {
   const router = useRouter();
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [userName, setUserName] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    loadDashboardData();
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      const user = await apiService.getCurrentUser();
+      if (user && user.name) {
+        setUserName(user.name);
+      }
+    } catch (error) {
+      console.error('Error loading user:', error);
+    }
+  };
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const data = await apiService.getDashboardStats();
+      setDashboardData(data);
+    } catch (error: any) {
+      // If user has no family, redirect to family setup
+      if (error.error === 'User is not part of any family' ||
+        error.error === 'Not part of a family') {
+        console.log('No family found - redirecting to family setup');
+        try {
+          (router.replace as any)('/family-setup');
+        } catch (navError) {
+          console.error('Navigation error:', navError);
+        }
+      } else {
+        console.error('Error loading dashboard:', error);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadDashboardData();
+    await loadUserData();
+    setRefreshing(false);
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#1e3a8a', '#2563eb']}
+          style={styles.header}
+        >
+          <View style={styles.headerContent}>
+            <View>
+              <Text style={styles.familyName}>Loading...</Text>
+              <Text style={styles.headerTitle}>Family Dashboard</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.settingsButton}
+              // @ts-ignore - Route exists but not in type definitions
+              onPress={() => router.push('/family-settings')}
+            >
+              <Ionicons name="settings-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#2563eb" />
+          <Text style={{ marginTop: 16, color: '#64748b' }}>Loading dashboard...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!dashboardData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#1e3a8a', '#2563eb']}
+          style={styles.header}
+        >
+          <View style={styles.headerContent}>
+            <View>
+              <Text style={styles.familyName}>Error</Text>
+              <Text style={styles.headerTitle}>Family Dashboard</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.settingsButton}
+              // @ts-ignore - Route exists but not in type definitions
+              onPress={() => router.push('/family-settings')}
+            >
+              <Ionicons name="settings-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Ionicons name="alert-circle" size={64} color="#ef4444" />
+          <Text style={{ marginTop: 16, color: '#64748b', fontSize: 16 }}>Failed to load dashboard</Text>
+          <TouchableOpacity
+            onPress={loadDashboardData}
+            style={{ marginTop: 16, backgroundColor: '#2563eb', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const formatCurrency = (amount: number) => {
     return `KES ${amount.toLocaleString()}`;
@@ -54,11 +151,12 @@ export default function HomeScreen() {
       >
         <View style={styles.headerContent}>
           <View>
-            <Text style={styles.familyName}>{mockFamilyData.familyName}</Text>
+            <Text style={styles.familyName}>{dashboardData.familyName}</Text>
             <Text style={styles.headerTitle}>Family Dashboard</Text>
           </View>
           <TouchableOpacity
             style={styles.settingsButton}
+            // @ts-ignore - Route exists but not in type definitions
             onPress={() => router.push('/family-settings')}
           >
             <Ionicons name="settings-outline" size={24} color="#fff" />
@@ -66,11 +164,20 @@ export default function HomeScreen() {
         </View>
       </LinearGradient>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Welcome Message */}
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeText}>
-            Welcome back to {mockFamilyData.familyName}! 👋
+            Welcome back to Jibuks{userName ? `, ${userName}` : ''}! 👋
+          </Text>
+          <Text style={styles.familyNameText}>
+            {dashboardData.familyName}
           </Text>
         </View>
 
@@ -82,7 +189,7 @@ export default function HomeScreen() {
               <View style={[styles.iconCircle, { backgroundColor: '#dbeafe' }]}>
                 <Ionicons name="people" size={24} color="#2563eb" />
               </View>
-              <Text style={styles.statValue}>{mockFamilyData.totalMembers}</Text>
+              <Text style={styles.statValue}>{dashboardData.totalMembers}</Text>
               <Text style={styles.statLabel}>Total Members</Text>
             </View>
 
@@ -91,7 +198,7 @@ export default function HomeScreen() {
               <View style={[styles.iconCircle, { backgroundColor: '#fed7aa' }]}>
                 <Ionicons name="trophy" size={24} color="#f59e0b" />
               </View>
-              <Text style={styles.statValue}>{mockFamilyData.activeGoals}</Text>
+              <Text style={styles.statValue}>{dashboardData.activeGoals}</Text>
               <Text style={styles.statLabel}>Active Goals</Text>
             </View>
           </View>
@@ -102,7 +209,7 @@ export default function HomeScreen() {
               <View style={[styles.iconCircle, { backgroundColor: '#d1fae5' }]}>
                 <Ionicons name="wallet" size={24} color="#10b981" />
               </View>
-              <Text style={styles.statValue}>{formatCurrency(mockFamilyData.totalBudget)}</Text>
+              <Text style={styles.statValue}>{formatCurrency(dashboardData.totalBudget)}</Text>
               <Text style={styles.statLabel}>Total Budget</Text>
             </View>
 
@@ -111,7 +218,7 @@ export default function HomeScreen() {
               <View style={[styles.iconCircle, { backgroundColor: '#fce7f3' }]}>
                 <Ionicons name="trending-down" size={24} color="#ec4899" />
               </View>
-              <Text style={styles.statValue}>{formatCurrency(mockFamilyData.monthlySpending)}</Text>
+              <Text style={styles.statValue}>{formatCurrency(dashboardData.monthlySpending)}</Text>
               <Text style={styles.statLabel}>Month Spending</Text>
             </View>
           </View>
@@ -121,15 +228,32 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Goals</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => {
+              try {
+                (router.push as any)('/recent-goals');
+              } catch (error) {
+                console.error('Navigation error:', error);
+              }
+            }}>
               <Text style={styles.seeAllText}>See All</Text>
             </TouchableOpacity>
           </View>
 
-          {mockFamilyData.recentGoals.map((goal) => {
+          {dashboardData.recentGoals.map((goal: any) => {
             const progress = calculateProgress(goal.current, goal.target);
             return (
-              <View key={goal.id} style={styles.goalCard}>
+              <TouchableOpacity
+                key={goal.id}
+                style={styles.goalCard}
+                onPress={() => {
+                  try {
+                    (router.push as any)('/recent-goals');
+                  } catch (error) {
+                    console.error('Navigation error:', error);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
                 <View style={styles.goalHeader}>
                   <Text style={styles.goalName}>{goal.name}</Text>
                   <Text style={styles.goalDeadline}>{goal.deadline}</Text>
@@ -143,7 +267,7 @@ export default function HomeScreen() {
                 <View style={styles.progressBarContainer}>
                   <View style={[styles.progressBar, { width: `${progress}%` }]} />
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </View>
@@ -152,18 +276,35 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Budget Overview</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => {
+              try {
+                (router.push as any)('/monthly-budgets');
+              } catch (error) {
+                console.error('Navigation error:', error);
+              }
+            }}>
               <Text style={styles.seeAllText}>See All</Text>
             </TouchableOpacity>
           </View>
 
-          {mockFamilyData.budgetOverview.map((budget, index) => {
+          {dashboardData.budgetOverview.map((budget: any, index: number) => {
             const progress = calculateProgress(budget.spent, budget.allocated);
             const isOverBudget = budget.spent > budget.allocated;
             const remaining = budget.allocated - budget.spent;
 
             return (
-              <View key={index} style={styles.budgetCard}>
+              <TouchableOpacity
+                key={index}
+                style={styles.budgetCard}
+                onPress={() => {
+                  try {
+                    (router.push as any)('/monthly-budgets');
+                  } catch (error) {
+                    console.error('Navigation error:', error);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
                 <View style={styles.budgetHeader}>
                   <Text style={styles.budgetCategory}>{budget.category}</Text>
                   <Text style={[
@@ -188,7 +329,7 @@ export default function HomeScreen() {
                     }
                   ]} />
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </View>
@@ -196,38 +337,47 @@ export default function HomeScreen() {
         {/* Quick Action Buttons */}
         <View style={styles.actionsSection}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => {
-              // TODO: Navigate to Add Goal screen when implemented
-              console.log('Navigate to Add Goal');
+              try {
+                (router.push as any)('/family-dreams');
+              } catch (error) {
+                console.error('Navigation error:', error);
+              }
             }}
           >
             <Ionicons name="add-circle" size={24} color="#fff" />
             <Text style={styles.actionButtonText}>Add Goal</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => {
-              // TODO: Navigate to View Members screen when implemented
-              console.log('Navigate to View Members');
+              try {
+                (router.push as any)('/family-settings');
+              } catch (error) {
+                console.error('Navigation error:', error);
+              }
             }}
           >
             <Ionicons name="people" size={24} color="#fff" />
             <Text style={styles.actionButtonText}>View Members</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => {
-              // TODO: Navigate to Add Transaction screen when implemented
-              console.log('Navigate to Add Transaction');
+              try {
+                (router.push as any)('/add-family-member');
+              } catch (error) {
+                console.error('Navigation error:', error);
+              }
             }}
           >
-            <Ionicons name="cash" size={24} color="#fff" />
-            <Text style={styles.actionButtonText}>Add Transaction</Text>
+            <Ionicons name="person-add" size={24} color="#fff" />
+            <Text style={styles.actionButtonText}>Add Member</Text>
           </TouchableOpacity>
         </View>
 
@@ -285,6 +435,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#374151',
     fontWeight: '600',
+  },
+  familyNameText: {
+    fontSize: 16,
+    color: '#2563eb',
+    fontWeight: '700',
+    marginTop: 4,
   },
   statsContainer: {
     paddingHorizontal: 20,

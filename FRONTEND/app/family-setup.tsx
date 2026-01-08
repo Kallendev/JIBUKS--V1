@@ -63,8 +63,15 @@ export default function FamilySetupScreen() {
 
         setFamilyMembers(members);
       }
-    } catch (error) {
-      console.error('Failed to load family:', error);
+    } catch (error: any) {
+      // If user is not part of a family, that's okay - they can create one
+      if (error.error === 'User is not part of any family' || error.error === 'Not part of a family') {
+        console.log('User has no family yet - ready to create one');
+        setFamilyName('');
+        setFamilyMembers([]);
+      } else {
+        console.error('Failed to load family:', error);
+      }
     }
   };
 
