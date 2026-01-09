@@ -128,3 +128,109 @@ export interface FamilySettings {
   members: FamilyMemberDetailed[];
   pendingInvitations: PendingInvitation[];
 }
+
+// Enhanced Dashboard Types
+export interface TransactionItem {
+  id: number;
+  name: string;
+  amount: number; // negative for expenses, positive for income
+  date: string;
+  time?: string;
+  category: string;
+  icon?: string;
+  member?: string;
+  type: 'income' | 'expense';
+}
+
+export interface BalanceInfo {
+  total: number;
+  accountsCount: number;
+}
+
+export interface BudgetProgressInfo {
+  title: string;
+  spent: number;
+  remaining: number;
+  progress: number;
+}
+
+export interface GoalProgressDetail {
+  name: string;
+  current: number;
+  target: number;
+  progress: number;
+}
+
+export interface SpendingCategory {
+  category: string;
+  amount: number;
+  percentage: number;
+}
+
+export interface MonthlyComparison {
+  thisMonth: {
+    income: number;
+    expenses: number;
+  };
+  lastMonth: {
+    income: number;
+    expenses: number;
+  };
+}
+
+export interface CommunityMember {
+  id: number;
+  name: string;
+  status: 'online' | 'offline';
+  avatar: string | null;
+  lastActive: string;
+}
+
+export interface Announcement {
+  id: number;
+  title: string;
+  message: string;
+  date: string;
+  author: string;
+}
+
+// Income Management Types
+export interface Income {
+  id: number;
+  category: string;
+  amount: number;
+  time: string;
+  source: string;
+  member: string;
+  date: string;
+  description?: string;
+  splitWithFamily?: boolean;
+}
+
+export interface IncomeCategory {
+  id: string;
+  name: string;
+}
+
+export interface IncomeSource {
+  id: string;
+  name: string;
+}
+
+// Expense Management Types
+export interface Expense {
+  id: number;
+  description: string;
+  amount: number;
+  time: string;
+  category: string;
+  member: string;
+  date: string;
+  source: string;
+  splitWithFamily?: boolean;
+}
+
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+}
