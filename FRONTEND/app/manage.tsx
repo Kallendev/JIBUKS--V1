@@ -213,6 +213,22 @@ export default function ManageScreen() {
 
           <TouchableOpacity
             style={styles.actionCard}
+            onPress={() => router.push('/accounts' as any)}
+          >
+            <View style={styles.actionLeft}>
+              <View style={[styles.actionIcon, { backgroundColor: '#dbeafe' }]}>
+                <Ionicons name="list" size={24} color="#2563eb" />
+              </View>
+              <View>
+                <Text style={styles.actionTitle}>Chart of Accounts</Text>
+                <Text style={styles.actionSubtitle}>View all financial accounts</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
             onPress={() => router.push('/family-settings' as any)}
           >
             <View style={styles.actionLeft}>
