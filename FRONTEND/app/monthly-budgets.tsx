@@ -69,8 +69,9 @@ export default function MonthlyBudgetsScreen() {
     setRefreshing(false);
   };
 
-  const formatCurrency = (value: number) => {
-    return `KES ${value.toLocaleString()}`;
+  const formatCurrency = (value?: number) => {
+    const amount = Number(value) || 0;
+    return `KES ${amount.toLocaleString()}`;
   };
 
   const handleCreateBudget = async () => {
@@ -153,8 +154,26 @@ export default function MonthlyBudgetsScreen() {
     );
   }
 
-  const totalBudgeted = budgets.reduce((sum, b) => sum + Number(b.amount), 0);
-  const totalSpent = budgets.reduce((sum, b) => sum + Number(b.spent), 0);
+  const normalizedBudgets = budgets.map((b) => {
+    const amount = Number(b.amount) || 0;
+    const spent = Number(b.spent) || 0;
+    const remaining = amount - spent;
+    const progress = amount > 0 ? Math.round((spent / amount) * 100) : 0;
+    const status = remaining < 0 ? 'DANGER' : progress >= 80 ? 'WARNING' : 'GOOD';
+
+    return {
+      ...b,
+      amount,
+      spent,
+      remaining,
+      progress,
+      status,
+      isOverBudget: remaining < 0,
+    };
+  });
+
+  const totalBudgeted = normalizedBudgets.reduce((sum, b) => sum + b.amount, 0);
+  const totalSpent = normalizedBudgets.reduce((sum, b) => sum + b.spent, 0);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -200,7 +219,7 @@ export default function MonthlyBudgetsScreen() {
           </View>
         ) : (
           <View style={styles.budgetList}>
-            {budgets.map((budget) => (
+            {normalizedBudgets.map((budget) => (
               <View key={budget.id} style={styles.budgetCard}>
                 <View style={styles.budgetHeader}>
                   <View style={styles.budgetIconContainer}>
@@ -247,7 +266,7 @@ export default function MonthlyBudgetsScreen() {
                     <View
                       style={[
                         styles.progressBar,
-                        { width: `${Math.min(parseFloat(budget.progress), 100)}%` },
+                        { width: `${Math.min(Number(budget.progress) || 0, 100)}%` },
                         budget.isOverBudget ? { backgroundColor: '#ef4444' } :
                           budget.status === 'WARNING' ? { backgroundColor: '#f59e0b' } :
                             { backgroundColor: '#10b981' }
