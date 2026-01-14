@@ -15,6 +15,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import apiService from '@/services/api';
+import { useAccounts } from '@/contexts/AccountsContext';
+import { getDefaultDebitAccount, getDefaultCreditAccount } from '@/utils/accountMapping';
 
 export default function AddExpenseScreen() {
   const router = useRouter();
@@ -26,13 +28,19 @@ export default function AddExpenseScreen() {
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [sourceAccountId, setSourceAccountId] = useState('');
 
   const [categories, setCategories] = useState<any[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const { accounts, defaultAccount } = useAccounts();
 
   useEffect(() => {
     loadData();
-  }, []);
+    // Set default account
+    if (defaultAccount) {
+      setSourceAccountId(defaultAccount.id);
+    }
+  }, [defaultAccount]);
 
   const loadData = async () => {
     try {
@@ -126,6 +134,15 @@ export default function AddExpenseScreen() {
     try {
       setSubmitting(true);
 
+      const debitAcctId = getDefaultDebitAccount('EXPENSE', selectedCategory);
+      const creditAcctId = sourceAccountId || getDefaultCreditAccount('EXPENSE', selectedCategory);
+
+      console.log('💸 Creating EXPENSE transaction with accounts:', {
+        debitAccountId: debitAcctId,
+        creditAccountId: creditAcctId,
+        category: selectedCategory,
+      });
+
       await apiService.createTransaction({
         type: 'EXPENSE',
         amount: parseFloat(amount),
@@ -134,6 +151,8 @@ export default function AddExpenseScreen() {
         paymentMethod: selectedPayment,
         date: date.toISOString(),
         notes: notes || undefined,
+        debitAccountId: debitAcctId,
+        creditAccountId: creditAcctId,
       });
 
       Alert.alert(
@@ -274,6 +293,47 @@ export default function AddExpenseScreen() {
                   >
                     {method.name}
                   </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Paid from Account */}
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Paid from Account (Optional)</Text>
+            <View style={styles.accountsGrid}>
+              {accounts.filter(acc => acc.type === 'ASSET').map((account) => (
+                <TouchableOpacity
+                  key={account.id}
+                  style={[
+                    styles.accountCard,
+                    sourceAccountId === account.id && styles.accountCardActive,
+                  ]}
+                  onPress={() => setSourceAccountId(account.id)}
+                >
+                  <View style={styles.accountCardContent}>
+                    <Ionicons
+                      name="wallet"
+                      size={20}
+                      color={sourceAccountId === account.id ? '#ef4444' : '#6b7280'}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[
+                          styles.accountName,
+                          sourceAccountId === account.id && styles.accountNameActive,
+                        ]}
+                      >
+                        {account.name}
+                      </Text>
+                      <Text style={styles.accountCode}>{account.code}</Text>
+                    </View>
+                    {account.isDefault && (
+                      <View style={styles.defaultBadge}>
+                        <Text style={styles.defaultBadgeText}>Default</Text>
+                      </View>
+                    )}
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
@@ -519,5 +579,48 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  accountsGrid: {
+    gap: 12,
+  },
+  accountCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+  },
+  accountCardActive: {
+    backgroundColor: '#fee2e2',
+    borderColor: '#ef4444',
+  },
+  accountCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  accountName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  accountNameActive: {
+    color: '#ef4444',
+  },
+  accountCode: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginTop: 2,
+  },
+  defaultBadge: {
+    backgroundColor: '#dbeafe',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  defaultBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#2563eb',
   },
 });
