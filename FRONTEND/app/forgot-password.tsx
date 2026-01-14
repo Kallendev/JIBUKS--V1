@@ -7,23 +7,30 @@ import { showToast } from '@/utils/toast'
 
 const ForgotPassword = () => {
   const router = useRouter()
+  const [deliveryMethod, setDeliveryMethod] = useState<'email' | 'sms'>('email')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSendOtp = async () => {
-    if (!email) {
+    if (deliveryMethod === 'email' && !email) {
       showToast.error('Error', 'Please enter your email')
+      return
+    }
+
+    if (deliveryMethod === 'sms' && !phone) {
+      showToast.error('Error', 'Please enter your phone number')
       return
     }
 
     setIsLoading(true)
     try {
-      await apiService.forgotPassword(email)
-      showToast.success('Success', 'OTP sent to your email')
-      router.push({ pathname: '/verify-otp', params: { email } } as any)
+      await apiService.forgotPassword(email, phone, deliveryMethod)
+      showToast.success('Success', `OTP sent to your ${deliveryMethod === 'email' ? 'email' : 'phone'}`)
+      router.push({ pathname: '/verify-otp', params: { email: email || phone, deliveryMethod } } as any)
     } catch (error: any) {
       console.error('Forgot password error:', error)
-      showToast.error('Error', error.response?.data?.error || error.message || 'Failed to send OTP')
+      showToast.error('Error', error.error || error.message || 'Failed to send OTP')
     } finally {
       setIsLoading(false)
     }
@@ -44,23 +51,74 @@ const ForgotPassword = () => {
             <Ionicons name="lock-closed-outline" size={40} color="#2E4BC7" />
           </View>
           <Text style={styles.title}>Forgot Password?</Text>
-          <Text style={styles.subtitle}>Enter your email address and we'll send you a code to reset your password.</Text>
+          <Text style={styles.subtitle}>Enter your contact information and we'll send you a code to reset your password.</Text>
         </View>
 
         <View style={styles.formSection}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email Address :</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your email"
-              placeholderTextColor="#999"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              editable={!isLoading}
-            />
+          {/* Delivery Method Toggle */}
+          <View style={styles.toggleContainer}>
+            <TouchableOpacity
+              style={[styles.toggleButton, deliveryMethod === 'email' && styles.toggleButtonActive]}
+              onPress={() => setDeliveryMethod('email')}
+            >
+              <Ionicons
+                name="mail-outline"
+                size={20}
+                color={deliveryMethod === 'email' ? '#2E4BC7' : '#666'}
+              />
+              <Text style={[styles.toggleText, deliveryMethod === 'email' && styles.toggleTextActive]}>
+                Email
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.toggleButton, deliveryMethod === 'sms' && styles.toggleButtonActive]}
+              onPress={() => setDeliveryMethod('sms')}
+            >
+              <Ionicons
+                name="chatbubble-outline"
+                size={20}
+                color={deliveryMethod === 'sms' ? '#2E4BC7' : '#666'}
+              />
+              <Text style={[styles.toggleText, deliveryMethod === 'sms' && styles.toggleTextActive]}>
+                SMS
+              </Text>
+            </TouchableOpacity>
           </View>
+
+          {/* Email Input */}
+          {deliveryMethod === 'email' && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email Address :</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your email"
+                placeholderTextColor="#999"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                editable={!isLoading}
+              />
+            </View>
+          )}
+
+          {/* Phone Input */}
+          {deliveryMethod === 'sms' && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Phone Number :</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="254703727272"
+                placeholderTextColor="#999"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                editable={!isLoading}
+              />
+              <Text style={styles.hint}>Enter phone number with country code (e.g., 254...)</Text>
+            </View>
+          )}
 
           <TouchableOpacity
             style={[styles.button, isLoading && styles.buttonDisabled]}
@@ -123,6 +181,35 @@ const styles = StyleSheet.create({
   formSection: {
     width: '100%',
   },
+  toggleContainer: {
+    flexDirection: 'row',
+    marginBottom: 30,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#333',
+    overflow: 'hidden',
+  },
+  toggleButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 8,
+  },
+  toggleButtonActive: {
+    backgroundColor: '#F5B942',
+  },
+  toggleText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#666',
+  },
+  toggleTextActive: {
+    color: '#2E4BC7',
+    fontWeight: '600',
+  },
   inputGroup: {
     marginBottom: 30,
   },
@@ -141,6 +228,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#fff',
     color: '#333',
+  },
+  hint: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 6,
+    fontStyle: 'italic',
   },
   button: {
     backgroundColor: '#F5B942',

@@ -7,13 +7,13 @@ import { showToast } from '@/utils/toast'
 
 const VerifyOtp = () => {
   const router = useRouter()
-  const { email } = useLocalSearchParams<{ email: string }>()
+  const { email, deliveryMethod = 'email' } = useLocalSearchParams<{ email: string; deliveryMethod?: string }>()
   const [otp, setOtp] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
   const handleVerify = async () => {
-    if (!otp || otp.length !== 6) {
-      showToast.error('Error', 'Please enter a valid 6-digit code')
+    if (!otp || otp.length !== 4) {
+      showToast.error('Error', 'Please enter a valid 4-digit code')
       return
     }
 
@@ -24,7 +24,7 @@ const VerifyOtp = () => {
       router.push({ pathname: '/reset-password', params: { email, otp } } as any)
     } catch (error: any) {
       console.error('Verify OTP error:', error)
-      showToast.error('Error', error.response?.data?.error || error.message || 'Invalid code')
+      showToast.error('Error', error.error || error.message || 'Invalid code')
     } finally {
       setIsLoading(false)
     }
@@ -32,7 +32,11 @@ const VerifyOtp = () => {
 
   const handleResend = async () => {
     try {
-      await apiService.forgotPassword(email)
+      if (deliveryMethod === 'sms') {
+        await apiService.forgotPassword('', email, 'sms')
+      } else {
+        await apiService.forgotPassword(email, '', 'email')
+      }
       showToast.success('Success', 'Code resent')
     } catch (error: any) {
       showToast.error('Error', 'Failed to resend code')
@@ -65,12 +69,12 @@ const VerifyOtp = () => {
             <Text style={styles.label}>Enter Code :</Text>
             <TextInput
               style={[styles.input, { letterSpacing: 10 }]}
-              placeholder="000000"
+              placeholder="0000"
               placeholderTextColor="#999"
               value={otp}
               onChangeText={setOtp}
               keyboardType="number-pad"
-              maxLength={6}
+              maxLength={4}
               editable={!isLoading}
               textAlign="center"
             />

@@ -221,10 +221,10 @@ class ApiService {
     }
   }
 
-  async forgotPassword(email: string): Promise<any> {
+  async forgotPassword(email: string, phone?: string, deliveryMethod: 'email' | 'sms' = 'email'): Promise<any> {
     return this.request('/auth/forgot-password', {
       method: 'POST',
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, phone, deliveryMethod }),
     });
   }
 

@@ -34,6 +34,7 @@ model User {
   role                  Role                   @default(MEMBER)
   auth0Id               String?                @unique @map("auth0_id")
   avatarUrl             String?                @map("avatar_url")
+  phone                 String?                @map("phone")
   createdAt             DateTime               @default(now()) @map("created_at")
   isActive              Boolean                @default(true) @map("is_active")
   permissions           Json?

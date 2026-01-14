@@ -204,22 +204,38 @@ async function logout(req, res, next) {
 }
 
 
+
 /**
  * Forgot Password - Send OTP
  */
 async function forgotPassword(req, res, next) {
   try {
-    const { email } = req.body;
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
+    const { email, phone, deliveryMethod } = req.body;
+
+    // Validate input based on delivery method
+    if (deliveryMethod === 'sms') {
+      if (!phone) {
+        return res.status(400).json({ error: 'Phone number is required for SMS delivery' });
+      }
+    } else {
+      if (!email) {
+        return res.status(400).json({ error: 'Email is required for email delivery' });
+      }
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    // Find user by email or phone
+    let user;
+    if (deliveryMethod === 'sms' && phone) {
+      user = await prisma.user.findFirst({ where: { phone } });
+    } else if (email) {
+      user = await prisma.user.findUnique({ where: { email } });
+    }
+
     if (!user) {
-      return res.json({ message: 'If that email is in our system, we sent an OTP.' });
+      return res.json({ message: 'If that contact is in our system, we sent an OTP.' });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit OTP
     const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     await prisma.user.update({
@@ -230,18 +246,25 @@ async function forgotPassword(req, res, next) {
       },
     });
 
-    await sendEmail({
-      to: email,
-      subject: 'Password Reset OTP',
-      text: `Your OTP for password reset is: ${otp}`,
-      html: `<p>Your OTP for password reset is: <strong>${otp}</strong></p><p>This code expires in 15 minutes.</p>`,
-    });
-
-    res.json({ message: 'OTP sent to email' });
+    // Send OTP via selected method
+    if (deliveryMethod === 'sms' && user.phone) {
+      const { sendOtpSMS } = await import('../services/smsService.js');
+      await sendOtpSMS(user.phone, otp);
+      res.json({ message: 'OTP sent to phone number' });
+    } else {
+      await sendEmail({
+        to: user.email,
+        subject: 'Password Reset OTP',
+        text: `Your OTP for password reset is: ${otp}`,
+        html: `<p>Your OTP for password reset is: <strong>${otp}</strong></p><p>This code expires in 15 minutes.</p>`,
+      });
+      res.json({ message: 'OTP sent to email' });
+    }
   } catch (err) {
     next(err);
   }
 }
+
 
 /**
  * Verify OTP
