@@ -1,6 +1,7 @@
 import express from 'express';
 import { prisma } from '../lib/prisma.js';
 import { verifyJWT } from '../middleware/auth.js';
+import { seedFamilyCategories } from '../services/accountingService.js';
 
 const router = express.Router();
 
@@ -139,6 +140,54 @@ router.delete('/:id', async (req, res) => {
     } catch (error) {
         console.error('Error deleting category:', error);
         res.status(500).json({ error: 'Failed to delete category' });
+    }
+});
+
+// Seed default categories for the family
+router.post('/seed', async (req, res) => {
+    try {
+        const { tenantId, role } = req.user;
+
+        if (!tenantId) {
+            return res.status(400).json({ error: 'User is not part of any family' });
+        }
+
+        // Only owners and admins can seed categories
+        if (role !== 'OWNER' && role !== 'ADMIN') {
+            return res.status(403).json({ error: 'Only owners or admins can seed categories' });
+        }
+
+        const { force = false } = req.body;
+
+        // Check existing categories
+        const existingCount = await prisma.category.count({
+            where: { tenantId }
+        });
+
+        if (existingCount > 0 && !force) {
+            return res.status(400).json({
+                error: 'Categories already exist. Use force=true to reseed.',
+                existingCount
+            });
+        }
+
+        // If force, delete all existing categories (careful!)
+        if (force && existingCount > 0) {
+            await prisma.category.deleteMany({
+                where: { tenantId }
+            });
+        }
+
+        // Seed categories
+        const count = await seedFamilyCategories(tenantId);
+
+        res.json({
+            message: 'Categories seeded successfully',
+            categoriesCreated: count
+        });
+    } catch (error) {
+        console.error('Error seeding categories:', error);
+        res.status(500).json({ error: 'Failed to seed categories' });
     }
 });
 
