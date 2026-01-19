@@ -39,6 +39,9 @@ model Tenant {
   fixedAssets           FixedAsset[]
   customers             Customer[]
   invoices              Invoice[]
+  receipts              Receipt[]
+  expenses              Expense[]
+  expenseCategories     ExpenseCategory[]
 
   @@map("tenants")
 }
@@ -78,12 +81,15 @@ model Account {
   journalLines    JournalLine[]
   invoiceItems    InvoiceItem[]
   invoicePayments InvoicePayment[]
+  expenses        Expense[]
+  expenseCategories ExpenseCategory[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
   @@index([type])
   @@map("accounts")
 }
+
 
 // Journal Entry (Header)
 model Journal {
@@ -327,6 +333,7 @@ model Vendor {
   
   tenant          Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   purchases       Purchase[]
+  expenses        Expense[]
   
   @@index([tenantId])
   @@map("vendors")
@@ -351,6 +358,11 @@ model Purchase {
   createdById     Int              @map("created_by_id")
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
+  
+  vatRate          Decimal          @default(16) @map("vat_rate")
+  vatAmount        Decimal          @default(0) @map("vat_amount")
+  amountBeforeVAT  Decimal          @default(0) @map("amount_before_vat")
+  includesVAT      Boolean          @default(true) @map("includes_vat")
   
   tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   vendor          Vendor?          @relation(fields: [vendorId], references: [id])
@@ -590,6 +602,7 @@ model Customer {
   
   tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   invoices      Invoice[]
+  receipts      Receipt[]
   
   @@index([tenantId])
   @@index([name])
@@ -614,17 +627,94 @@ model Invoice {
   createdAt     DateTime         @default(now()) @map("created_at")
   updatedAt     DateTime         @updatedAt @map("updated_at")
   
+  vatRate          Decimal          @default(16) @map("vat_rate")
+  vatAmount        Decimal          @default(0) @map("vat_amount")
+  amountBeforeVAT  Decimal          @default(0) @map("amount_before_vat")
+  includesVAT      Boolean          @default(true) @map("includes_vat")
+  
   tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer      Customer         @relation(fields: [customerId], references: [id])
   items         InvoiceItem[]
   payments      InvoicePayment[]
   journals      Journal[]
+  receipts      Receipt[]
   
   @@index([tenantId])
   @@index([customerId])
   @@index([status])
   @@index([invoiceDate])
   @@map("invoices")
+}
+
+// ============================================
+// RECEIPTS & INCOME
+// ============================================
+
+model Receipt {
+  id              Int       @id @default(autoincrement())
+  tenantId        Int       @map("tenant_id")
+  receiptNumber   String    @map("receipt_number")
+  date            DateTime
+  amount          Decimal
+  paymentMethod   String    @map("payment_method") // Cash, Bank, M-Pesa, Airtel Money
+  customerId      Int?      @map("customer_id")
+  invoiceId       Int?      @map("invoice_id")
+  category        String?
+  description     String?
+  reference       String?   // M-Pesa code, cheque number
+  createdAt       DateTime  @default(now()) @map("created_at")
+  
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  customer        Customer? @relation(fields: [customerId], references: [id])
+  invoice         Invoice?  @relation(fields: [invoiceId], references: [id])
+  
+  @@index([tenantId])
+  @@index([date])
+  @@map("receipts")
+}
+
+// ============================================
+// EXPENSES
+// ============================================
+
+model Expense {
+  id              Int       @id @default(autoincrement())
+  tenantId        Int       @map("tenant_id")
+  expenseNumber   String    @map("expense_number")
+  date            DateTime
+  amount          Decimal
+  vatAmount       Decimal   @default(0) @map("vat_amount")
+  totalAmount     Decimal   @map("total_amount")
+  category        String    // Rent, Utilities, Salaries, etc.
+  vendorId        Int?      @map("vendor_id")
+  paymentMethod   String    @map("payment_method")
+  description     String?
+  reference       String?
+  receiptPhoto    String?   @map("receipt_photo")
+  accountId       Int?      @map("account_id") // Expense account
+  createdAt       DateTime  @default(now()) @map("created_at")
+  
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  vendor          Vendor?   @relation(fields: [vendorId], references: [id])
+  account         Account?  @relation(fields: [accountId], references: [id])
+  
+  @@index([tenantId])
+  @@index([date])
+  @@map("expenses")
+}
+
+model ExpenseCategory {
+  id              Int       @id @default(autoincrement())
+  tenantId        Int       @map("tenant_id")
+  name            String
+  description     String?
+  accountId       Int?      @map("account_id") // Default expense account
+  isActive        Boolean   @default(true) @map("is_active")
+  
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  account         Account?  @relation(fields: [accountId], references: [id])
+  
+  @@map("expense_categories")
 }
 
 // Invoice Line Items

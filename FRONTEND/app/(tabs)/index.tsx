@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import apiService from '@/services/api';
@@ -98,27 +97,9 @@ export default function HomeScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <LinearGradient
-          colors={['#1e3a8a', '#2563eb']}
-          style={styles.header}
-        >
-          <View style={styles.headerContent}>
-            <View>
-              <Text style={styles.familyName}>Loading...</Text>
-              <Text style={styles.headerTitle}>Family Dashboard</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.settingsButton}
-              // @ts-ignore - Route exists but not in type definitions
-              onPress={() => router.push('/family-settings')}
-            >
-              <Ionicons name="settings-outline" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#2563eb" />
-          <Text style={{ marginTop: 16, color: '#64748b' }}>Loading dashboard...</Text>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#f59e0b" />
+          <Text style={styles.loadingText}>Loading dashboard...</Text>
         </View>
       </SafeAreaView>
     );
@@ -127,43 +108,11 @@ export default function HomeScreen() {
   if (!dashboardData) {
     return (
       <SafeAreaView style={styles.container}>
-        <LinearGradient
-          colors={['#1e3a8a', '#2563eb']}
-          style={styles.header}
-        >
-          <View style={styles.headerContent}>
-            <View>
-              <Text style={styles.familyName}>Error</Text>
-              <Text style={styles.headerTitle}>Family Dashboard</Text>
-            </View>
-            <View style={styles.headerIcons}>
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() => {
-                  // TODO: Navigate to notifications screen when implemented
-                  console.log('Notifications pressed');
-                }}
-              >
-                <Ionicons name="notifications-outline" size={24} color="#fff" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.iconButton}
-                // @ts-ignore - Route exists but not in type definitions
-                onPress={() => router.push('/family-settings')}
-              >
-                <Ionicons name="settings-outline" size={24} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </LinearGradient>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={64} color="#ef4444" />
-          <Text style={{ marginTop: 16, color: '#64748b', fontSize: 16 }}>Failed to load dashboard</Text>
-          <TouchableOpacity
-            onPress={loadDashboardData}
-            style={{ marginTop: 16, backgroundColor: '#2563eb', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}
-          >
-            <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
+          <Text style={styles.errorText}>Failed to load dashboard</Text>
+          <TouchableOpacity onPress={loadDashboardData} style={styles.retryButton}>
+            <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -174,42 +123,23 @@ export default function HomeScreen() {
     return `KES ${amount.toLocaleString()}`;
   };
 
-  const calculateProgress = (current: number, target: number) => {
-    return Math.min((current / target) * 100, 100);
-  };
-
   return (
     <SafeAreaView style={styles.container}>
-      {/* Blue Gradient Header */}
-      <LinearGradient
-        colors={['#1e3a8a', '#2563eb']}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.familyName}>{dashboardData.familyName}</Text>
-            <Text style={styles.headerTitle}>Family Dashboard</Text>
-          </View>
-          <View style={styles.headerIcons}>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => {
-                // TODO: Navigate to notifications screen when implemented
-                console.log('Notifications pressed');
-              }}
-            >
-              <Ionicons name="notifications-outline" size={24} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconButton}
-              // @ts-ignore - Route exists but not in type definitions
-              onPress={() => router.push('/family-settings')}
-            >
-              <Ionicons name="settings-outline" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>JIBUKS</Text>
+        <View style={styles.headerIcons}>
+          <TouchableOpacity style={styles.iconButton}>
+            <Ionicons name="notifications-outline" size={24} color="#ffffff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.push('/family-settings' as any)}
+          >
+            <Ionicons name="settings-outline" size={24} color="#ffffff" />
+          </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView
         style={styles.scrollView}
@@ -218,391 +148,235 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Welcome Message */}
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeText}>
-            Welcome back to Jibuks{userName ? `, ${userName}` : ''}! 👋
-          </Text>
-          <Text style={styles.familyNameText}>
-            {dashboardData.familyName}
-          </Text>
-        </View>
-
-        {/* Balance Card */}
-        <View style={styles.section}>
-          <View style={styles.balanceCard}>
-            <Text style={styles.balanceTitle}>BALANCE</Text>
-            <Text style={styles.balanceAmount}>{formatCurrency(dashboardData.summary?.balance || 0)}</Text>
-            <Text style={styles.balanceSubtitle}>
-              Income: {formatCurrency(dashboardData.summary?.totalIncome || 0)} |
-              Expenses: {formatCurrency(dashboardData.summary?.totalExpenses || 0)}
-            </Text>
-          </View>
-        </View>
-
-        {/* Quick Stats Cards */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statsRow}>
-            {/* Total Members */}
-            <View style={styles.statCard}>
-              <View style={[styles.iconCircle, { backgroundColor: '#dbeafe' }]}>
-                <Ionicons name="people" size={24} color="#2563eb" />
+        {/* Financial Summary Cards */}
+        <View style={styles.summarySection}>
+          <View style={styles.summaryRow}>
+            {/* Cash on Hand */}
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryCardHeader}>
+                <Ionicons name="cash-outline" size={20} color="#fe9900" />
+                <Text style={styles.summaryCardTitle}>Cash on hand</Text>
               </View>
-              <Text style={styles.statValue}>{dashboardData.totalMembers}</Text>
-              <Text style={styles.statLabel}>Total Members</Text>
+              <Text style={styles.summaryCardAmount}>
+                {formatCurrency(dashboardData.summary?.balance || 0)}
+              </Text>
             </View>
 
-            {/* Active Goals */}
-            <View style={styles.statCard}>
-              <View style={[styles.iconCircle, { backgroundColor: '#fed7aa' }]}>
-                <Ionicons name="trophy" size={24} color="#f59e0b" />
+            {/* Income MTD */}
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryCardHeader}>
+                <Ionicons name="trending-up-outline" size={20} color="#10b981" />
+                <Text style={styles.summaryCardTitle}>Income (MTD)</Text>
               </View>
-              <Text style={styles.statValue}>{dashboardData.activeGoals}</Text>
-              <Text style={styles.statLabel}>Active Goals</Text>
+              <Text style={styles.summaryCardAmount}>
+                {formatCurrency(dashboardData.summary?.totalIncome || 0)}
+              </Text>
             </View>
           </View>
 
-          <View style={styles.statsRow}>
-            {/* This Month's Spending */}
-            <View style={styles.statCard}>
-              <View style={[styles.iconCircle, { backgroundColor: '#fce7f3' }]}>
-                <Ionicons name="trending-down" size={24} color="#ec4899" />
+          <View style={styles.summaryRow}>
+            {/* Expenses MTD */}
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryCardHeader}>
+                <Ionicons name="trending-down-outline" size={20} color="#ef4444" />
+                <Text style={styles.summaryCardTitle}>Expenses (MTD)</Text>
               </View>
-              <Text style={styles.statValue}>{formatCurrency(dashboardData.monthlySpending)}</Text>
-              <Text style={styles.statLabel}>Month Spending</Text>
+              <Text style={styles.summaryCardAmount}>
+                {formatCurrency(dashboardData.summary?.totalExpenses || 0)}
+              </Text>
+            </View>
+
+            {/* Net Balance */}
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryCardHeader}>
+                <Ionicons name="wallet-outline" size={20} color="#122f8a" />
+                <Text style={styles.summaryCardTitle}>Net Balance</Text>
+              </View>
+              <Text style={styles.summaryCardAmount}>
+                {formatCurrency((dashboardData.summary?.totalIncome || 0) - (dashboardData.summary?.totalExpenses || 0))}
+              </Text>
             </View>
           </View>
         </View>
 
-
-
-        {/* Action Buttons */}
+        {/* Quick Actions */}
         <View style={styles.section}>
-          <View style={styles.actionButtonsRow}>
-            <TouchableOpacity
-              style={styles.actionButtonSquare}
-              onPress={() => {
-                try {
-                  (router.push as any)('/income');
-                } catch (error) {
-                  console.error('Navigation error:', error);
-                }
-              }}
-            >
-              <View style={styles.actionIconCircle}>
-                <Text style={styles.actionIconEmoji}>🎁</Text>
-              </View>
-              <Text style={styles.actionButtonLabel}>Income</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButtonSquare}
-              onPress={() => {
-                try {
-                  (router.push as any)('/expenses');
-                } catch (error) {
-                  console.error('Navigation error:', error);
-                }
-              }}
-            >
-              <View style={styles.actionIconCircle}>
-                <Text style={styles.actionIconEmoji}>💰</Text>
-              </View>
-              <Text style={styles.actionButtonLabel}>Expense</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButtonSquare}
-              onPress={() => {
-                try {
-                  (router.push as any)('/manage');
-                } catch (error) {
-                  console.error('Navigation error:', error);
-                }
-              }}
-            >
-              <View style={styles.actionIconCircle}>
-                <Ionicons name="settings" size={24} color="#fff" />
-              </View>
-              <Text style={styles.actionButtonLabel}>Manage</Text>
-            </TouchableOpacity>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="flash" size={20} color="#fe9900" />
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
           </View>
-        </View>
 
-        {/* Premium Business Cards - No Title */}
-        <View style={styles.section}>
-          <View style={styles.businessGrid}>
-            {/* Purchases Card */}
+          <View style={styles.quickActionsGrid}>
             <TouchableOpacity
-              style={styles.businessCard}
+              style={styles.quickActionButton}
               onPress={() => router.push('/purchases' as any)}
-              activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={['#fef3c7', '#fde68a']}
-                style={styles.businessGradient}
-              >
-                <View style={styles.businessIconContainer}>
-                  <Ionicons name="receipt" size={28} color="#f59e0b" />
-                </View>
-                <Text style={styles.businessCardTitle}>Bills & Purchases</Text>
-                <Text style={styles.businessCardSubtitle}>Manage vendor payments</Text>
-              </LinearGradient>
+              <Ionicons name="cart" size={18} color="#ffffff" />
+              <Text style={styles.quickActionText}>Purchase</Text>
             </TouchableOpacity>
 
-            {/* Inventory Card */}
             <TouchableOpacity
-              style={styles.businessCard}
-              onPress={() => router.push('/inventory' as any)}
-              activeOpacity={0.8}
+              style={[styles.quickActionButton, styles.quickActionOrange]}
+              onPress={() => router.push('/cheques' as any)}
             >
-              <LinearGradient
-                colors={['#d1fae5', '#a7f3d0']}
-                style={styles.businessGradient}
-              >
-                <View style={styles.businessIconContainer}>
-                  <Ionicons name="cube" size={28} color="#10b981" />
-                </View>
-                <Text style={styles.businessCardTitle}>Inventory</Text>
-                <Text style={styles.businessCardSubtitle}>Stock & valuation</Text>
-              </LinearGradient>
+              <Ionicons name="card" size={18} color="#ffffff" />
+              <Text style={styles.quickActionText}>Cheque</Text>
             </TouchableOpacity>
 
-            {/* Banking Card */}
             <TouchableOpacity
-              style={styles.businessCard}
+              style={styles.quickActionButton}
               onPress={() => router.push('/banking' as any)}
-              activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={['#dbeafe', '#bfdbfe']}
-                style={styles.businessGradient}
-              >
-                <View style={styles.businessIconContainer}>
-                  <Ionicons name="card" size={28} color="#2563eb" />
-                </View>
-                <Text style={styles.businessCardTitle}>Banking</Text>
-                <Text style={styles.businessCardSubtitle}>Deposits & transfers</Text>
-              </LinearGradient>
+              <Ionicons name="arrow-down-circle" size={18} color="#ffffff" />
+              <Text style={styles.quickActionText}>Deposit</Text>
             </TouchableOpacity>
 
-            {/* Vendors Card */}
             <TouchableOpacity
-              style={styles.businessCard}
+              style={[styles.quickActionButton, styles.quickActionOrange]}
+              onPress={() => router.push('/add-expense' as any)}
+            >
+              <Ionicons name="document-text" size={18} color="#ffffff" />
+              <Text style={styles.quickActionText}>Bill</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickActionButton}
               onPress={() => router.push('/vendors' as any)}
-              activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={['#fce7f3', '#fbcfe8']}
-                style={styles.businessGradient}
-              >
-                <View style={styles.businessIconContainer}>
-                  <Ionicons name="business" size={28} color="#ec4899" />
-                </View>
-                <Text style={styles.businessCardTitle}>Vendors</Text>
-                <Text style={styles.businessCardSubtitle}>Supplier management</Text>
-              </LinearGradient>
+              <Ionicons name="business" size={18} color="#ffffff" />
+              <Text style={styles.quickActionText}>Supplier</Text>
             </TouchableOpacity>
 
-            {/* Reports Card */}
             <TouchableOpacity
-              style={styles.businessCard}
-              onPress={() => router.push('/reports' as any)}
-              activeOpacity={0.8}
+              style={[styles.quickActionButton, styles.quickActionOrange]}
+              onPress={() => router.push('/purchases' as any)}
             >
-              <LinearGradient
-                colors={['#e0e7ff', '#c7d2fe']}
-                style={styles.businessGradient}
-              >
-                <View style={styles.businessIconContainer}>
-                  <Ionicons name="stats-chart" size={28} color="#6366f1" />
-                </View>
-                <Text style={styles.businessCardTitle}>Financial Reports</Text>
-                <Text style={styles.businessCardSubtitle}>Analytics & insights</Text>
-              </LinearGradient>
+              <Ionicons name="receipt" size={18} color="#ffffff" />
+              <Text style={styles.quickActionText}>Receipt</Text>
             </TouchableOpacity>
 
-            {/* Fixed Assets Card */}
             <TouchableOpacity
-              style={styles.businessCard}
-              onPress={() => router.push('/fixed-assets' as any)}
-              activeOpacity={0.8}
+              style={styles.quickActionButton}
+              onPress={() => router.push('/income' as any)}
             >
-              <LinearGradient
-                colors={['#fed7aa', '#fdba74']}
-                style={styles.businessGradient}
-              >
-                <View style={styles.businessIconContainer}>
-                  <Ionicons name="briefcase" size={28} color="#ea580c" />
-                </View>
-                <Text style={styles.businessCardTitle}>Fixed Assets</Text>
-                <Text style={styles.businessCardSubtitle}>Asset tracking</Text>
-              </LinearGradient>
+              <Ionicons name="trending-up" size={18} color="#ffffff" />
+              <Text style={styles.quickActionText}>Income</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.quickActionButton, styles.quickActionOrange]}
+              onPress={() => router.push('/expenses' as any)}
+            >
+              <Ionicons name="trending-down" size={18} color="#ffffff" />
+              <Text style={styles.quickActionText}>Expense</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickActionButton}
+              onPress={() => router.push('/banking' as any)}
+            >
+              <Ionicons name="swap-horizontal" size={18} color="#ffffff" />
+              <Text style={styles.quickActionText}>Transfer</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Recent Family Activity */}
+        {/* Upcoming Bills */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>RECENT FAMILY ACTIVITY</Text>
-          <View style={styles.activityCard}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="calendar-outline" size={20} color="#fe9900" />
+            <Text style={styles.sectionTitle}>Upcoming Bills</Text>
+          </View>
+
+          <View style={styles.billsCard}>
+            <View style={styles.billItem}>
+              <View style={styles.billLeft}>
+                <Text style={styles.billBullet}>•</Text>
+                <Text style={styles.billText}>Rent - Jan 25</Text>
+              </View>
+              <TouchableOpacity style={styles.payButton}>
+                <Text style={styles.payButtonText}>Pay Now</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.billItem}>
+              <View style={styles.billLeft}>
+                <Text style={styles.billBullet}>•</Text>
+                <Text style={styles.billText}>Electricity - Jan 25</Text>
+              </View>
+              <Text style={styles.billStatus}>AutoPay</Text>
+            </View>
+
+            <View style={styles.billItem}>
+              <View style={styles.billLeft}>
+                <Text style={styles.billBullet}>•</Text>
+                <Text style={styles.billText}>Water - Jan 18</Text>
+              </View>
+              <Text style={styles.billStatus}>Mark Paid</Text>
+            </View>
+
+            <View style={styles.billItem}>
+              <View style={styles.billLeft}>
+                <Text style={styles.billBullet}>•</Text>
+                <Text style={styles.billText}>School Fees - Feb 5</Text>
+              </View>
+              <TouchableOpacity style={styles.payButton}>
+                <Text style={styles.payButtonText}>Pay</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {/* Recent Transactions */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="time-outline" size={20} color="#fe9900" />
+            <Text style={styles.sectionTitle}>Recent Transactions</Text>
+          </View>
+
+          <View style={styles.transactionsCard}>
             {dashboardData.recentTransactions && dashboardData.recentTransactions.length > 0 ? (
-              dashboardData.recentTransactions.map((activity: any) => (
-                <View key={activity.id} style={styles.activityItem}>
-                  <View style={styles.activityLeft}>
-                    <View style={[
-                      styles.activityIconCircle,
-                      { backgroundColor: activity.type === 'income' ? '#d1fae5' : '#fee2e2' }
-                    ]}>
-                      <Ionicons
-                        name={activity.type === 'income' ? 'arrow-down' : 'arrow-up'}
-                        size={20}
-                        color={activity.type === 'income' ? '#10b981' : '#ef4444'}
-                      />
-                    </View>
-                    <View style={styles.activityDetails}>
-                      <Text style={styles.activityName}>{activity.name}</Text>
-                      <Text style={styles.activityTime}>{activity.time} | {activity.category}</Text>
+              dashboardData.recentTransactions.map((transaction: any) => (
+                <View key={transaction.id} style={styles.transactionItem}>
+                  <View style={styles.transactionLeft}>
+                    <Text style={styles.transactionBullet}>•</Text>
+                    <View>
+                      <Text style={styles.transactionName}>{transaction.name}</Text>
+                      <Text style={styles.transactionCategory}>
+                        {formatCurrency(transaction.amount)} ({transaction.category})
+                      </Text>
                     </View>
                   </View>
-                  <Text style={[
-                    styles.activityAmount,
-                    { color: activity.type === 'income' ? '#10b981' : '#ef4444' }
-                  ]}>
-                    {activity.type === 'income' ? '+' : '-'}{formatCurrency(Math.abs(activity.amount))}
-                  </Text>
                 </View>
               ))
             ) : (
-              <Text style={{ textAlign: 'center', color: '#6b7280', padding: 20 }}>
-                No recent transactions
-              </Text>
+              <Text style={styles.emptyText}>No recent transactions</Text>
             )}
           </View>
-          <TouchableOpacity
-            style={styles.viewAllButton}
-            onPress={() => router.push('/(tabs)/transactions' as any)}
-          >
-            <Text style={styles.viewAllButtonText}>View all Activity</Text>
-          </TouchableOpacity>
         </View>
 
-        {/* Recent Goals Section */}
+        {/* Suppliers Section */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Goals</Text>
-            <TouchableOpacity onPress={() => {
-              try {
-                (router.push as any)('/recent-goals');
-              } catch (error) {
-                console.error('Navigation error:', error);
-              }
-            }}>
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Ionicons name="business" size={18} color="#122f8a" />
+              <Text style={styles.infoText}>
+                <Text style={styles.infoLabel}>Suppliers:</Text> Water | Electricity | School | Supermarket
+              </Text>
+            </View>
           </View>
-
-          {dashboardData.recentGoals && dashboardData.recentGoals.length > 0 ? (
-            dashboardData.recentGoals.map((goal: any) => {
-              const progress = calculateProgress(goal.current, goal.target);
-              return (
-                <View key={goal.id} style={styles.goalCard}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      try {
-                        (router.push as any)('/recent-goals');
-                      } catch (error) {
-                        console.error('Navigation error:', error);
-                      }
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.goalHeader}>
-                      <Text style={styles.goalName}>{goal.name}</Text>
-                      <Text style={styles.goalDeadline}>{goal.deadline}</Text>
-                    </View>
-                    <View style={styles.goalAmounts}>
-                      <Text style={styles.goalAmount}>
-                        {formatCurrency(goal.current)} / {formatCurrency(goal.target)}
-                      </Text>
-                      <Text style={styles.goalPercentage}>{progress.toFixed(0)}%</Text>
-                    </View>
-                    <View style={styles.progressBarContainer}>
-                      <View style={[styles.progressBar, { width: `${progress}%` }]} />
-                    </View>
-                  </TouchableOpacity>
-
-                  {/* Add Money Button */}
-                  <TouchableOpacity
-                    style={styles.addToGoalButton}
-                    onPress={() => {
-                      try {
-                        (router.push as any)(`/add-to-goal?goalId=${goal.id}`);
-                      } catch (error) {
-                        console.error('Navigation error:', error);
-                      }
-                    }}
-                  >
-                    <Ionicons name="add-circle" size={20} color="#7c3aed" />
-                    <Text style={styles.addToGoalButtonText}>Add Money</Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            })
-          ) : (
-            <Text style={{ textAlign: 'center', color: '#6b7280', padding: 20 }}>
-              No active goals
-            </Text>
-          )}
         </View>
 
-
-
-        {/* Additional Quick Actions */}
-        <View style={styles.actionsSection}>
-          <Text style={styles.sectionTitle}>More Actions</Text>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => {
-              try {
-                (router.push as any)('/family-dreams');
-              } catch (error) {
-                console.error('Navigation error:', error);
-              }
-            }}
-          >
-            <Ionicons name="add-circle" size={24} color="#fff" />
-            <Text style={styles.actionButtonText}>Add Goal</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => {
-              try {
-                (router.push as any)('/family-settings');
-              } catch (error) {
-                console.error('Navigation error:', error);
-              }
-            }}
-          >
-            <Ionicons name="people" size={24} color="#fff" />
-            <Text style={styles.actionButtonText}>View Members</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => {
-              try {
-                (router.push as any)('/add-family-member');
-              } catch (error) {
-                console.error('Navigation error:', error);
-              }
-            }}
-          >
-            <Ionicons name="person-add" size={24} color="#fff" />
-            <Text style={styles.actionButtonText}>Add Member</Text>
-          </TouchableOpacity>
+        {/* Cheques Section */}
+        <View style={styles.section}>
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Ionicons name="wallet" size={18} color="#fe9900" />
+              <Text style={styles.infoText}>
+                <Text style={styles.infoLabel}>Cheques:</Text> Pending 2 | Cleared 5 | Deposited 1 | Returned 0
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* Bottom Spacing for Tab Bar */}
@@ -615,471 +389,294 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f0f4f8',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+  },
+  loadingText: {
+    marginTop: 16,
+    color: '#6b7280',
+    fontSize: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+  },
+  errorText: {
+    marginTop: 16,
+    color: '#6b7280',
+    fontSize: 16,
+  },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: '#f59e0b',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: '600',
   },
   header: {
-    paddingTop: 20,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  headerContent: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#122f8a',
+    borderBottomWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    letterSpacing: 0.5,
   },
   headerIcons: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 12,
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  settingsButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  familyName: {
-    color: '#f59e0b',
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  headerTitle: {
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: 'bold',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   scrollView: {
     flex: 1,
   },
-  welcomeSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+  summarySection: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
-  welcomeText: {
-    fontSize: 18,
-    color: '#374151',
-    fontWeight: '600',
-  },
-  familyNameText: {
-    fontSize: 16,
-    color: '#2563eb',
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  balanceCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  balanceTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-    marginBottom: 8,
-    letterSpacing: 1,
-  },
-  balanceAmount: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 8,
-  },
-  balanceSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  statsContainer: {
-    paddingHorizontal: 20,
-  },
-  statsRow: {
+  summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  statCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    width: (width - 56) / 2,
-    alignItems: 'center',
+  summaryCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    padding: 12,
+    width: '48%',
+    minWidth: 150,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
   },
-  iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  summaryCardHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  statValue: {
-    fontSize: 20,
+  summaryCardTitle: {
+    fontSize: 11,
+    color: '#6b7280',
+    marginLeft: 6,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  summaryCardAmount: {
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#1f2937',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-    textAlign: 'center',
+    marginTop: 4,
   },
   section: {
-    paddingHorizontal: 20,
-    marginTop: 24,
+    paddingHorizontal: 16,
+    marginTop: 20,
   },
   sectionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
+    paddingBottom: 8,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
-  },
-  seeAllText: {
-    fontSize: 14,
-    color: '#2563eb',
-    fontWeight: '600',
-  },
-  goalCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  goalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  goalName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-    flex: 1,
-  },
-  goalDeadline: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginLeft: 8,
-  },
-  goalAmounts: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  goalAmount: {
-    fontSize: 14,
-    color: '#4b5563',
-  },
-  goalPercentage: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2563eb',
-  },
-  addToGoalButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f3e8ff',
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 12,
-    gap: 8,
-  },
-  addToGoalButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#7c3aed',
-  },
-  progressBarContainer: {
-    height: 8,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#2563eb',
-    borderRadius: 4,
-  },
-  budgetCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  budgetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  budgetCategory: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-  },
-  budgetRemaining: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  budgetAmounts: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  budgetAmount: {
-    fontSize: 14,
-    color: '#4b5563',
-  },
-  budgetPercentage: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#f59e0b',
-  },
-  actionsSection: {
-    paddingHorizontal: 20,
-    marginTop: 24,
-    marginBottom: 20,
-  },
-  actionButton: {
-    backgroundColor: '#2563eb',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  // New styles for enhanced dashboard
-  progressCardsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  progressCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    width: (width - 56) / 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  progressCardTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6b7280',
-    marginBottom: 12,
-  },
-  progressCardDetails: {
-    marginTop: 8,
-  },
-  progressCardText: {
-    fontSize: 11,
-    color: '#6b7280',
-    marginBottom: 4,
-  },
-  progressCardAmount: {
-    fontSize: 11,
-    color: '#6b7280',
-    marginTop: 8,
-  },
-  actionButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  actionButtonSquare: {
-    backgroundColor: '#2563eb',
-    borderRadius: 16,
-    padding: 16,
-    width: (width - 64) / 3,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  actionIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  actionIconEmoji: {
-    fontSize: 24,
-  },
-  actionButtonLabel: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  activityCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  activityItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  activityLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  activityIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  activityDetails: {
-    flex: 1,
-  },
-  activityName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  activityTime: {
-    fontSize: 12,
-    color: '#9ca3af',
-  },
-  activityAmount: {
     fontSize: 14,
     fontWeight: '700',
+    color: '#122f8a',
+    marginLeft: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  viewAllButton: {
-    backgroundColor: '#2563eb',
-    borderRadius: 12,
-    padding: 14,
-    alignItems: 'center',
-    marginTop: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  viewAllButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  // Business Management Cards
-  businessGrid: {
+  quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginTop: 12,
-    gap: 12,
-  },
-  businessCard: {
-    width: (width - 56) / 2,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  businessGradient: {
-    padding: 20,
-    minHeight: 140,
-    justifyContent: 'space-between',
-  },
-  businessIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  quickActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#122f8a',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+    shadowColor: '#122f8a',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+    minWidth: 95,
+  },
+  quickActionOrange: {
+    backgroundColor: '#fe9900',
+    shadowColor: '#fe9900',
+  },
+  quickActionText: {
+    fontSize: 13,
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  billsCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  billItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  billLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  billBullet: {
+    fontSize: 20,
+    color: '#1f2937',
+    marginRight: 8,
+  },
+  billText: {
+    fontSize: 14,
+    color: '#1f2937',
+  },
+  payButton: {
+    backgroundColor: '#fe9900',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 6,
+    shadowColor: '#fe9900',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 2,
   },
-  businessCardTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginTop: 12,
+  payButtonText: {
+    fontSize: 12,
+    color: '#ffffff',
+    fontWeight: '700',
   },
-  businessCardSubtitle: {
+  billStatus: {
     fontSize: 12,
     color: '#6b7280',
-    marginTop: 4,
+  },
+  transactionsCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  transactionItem: {
+    paddingVertical: 8,
+  },
+  transactionLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  transactionBullet: {
+    fontSize: 20,
+    color: '#1f2937',
+    marginRight: 8,
+  },
+  transactionName: {
+    fontSize: 14,
+    color: '#1f2937',
+    fontWeight: '500',
+  },
+  transactionCategory: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#6b7280',
+    padding: 20,
+  },
+  infoCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  infoText: {
+    fontSize: 13,
+    color: '#1f2937',
+    flex: 1,
+    lineHeight: 20,
+  },
+  infoLabel: {
+    fontWeight: '700',
+    color: '#122f8a',
   },
 });
