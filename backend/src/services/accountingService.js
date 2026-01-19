@@ -16,7 +16,8 @@ import { prisma } from '../lib/prisma.js';
 // ============================================
 
 /**
- * Standard Family Chart of Accounts
+ * Enhanced Professional Chart of Accounts
+ * Supports business accounting with inventory, fixed assets, VAT, and payroll
  * Following accounting best practices with proper account numbering:
  * - 1000s: Assets
  * - 2000s: Liabilities
@@ -24,53 +25,120 @@ import { prisma } from '../lib/prisma.js';
  * - 4000s: Income/Revenue
  * - 5000s: Expenses
  */
-const FAMILY_COA_TEMPLATE = [
+export const FAMILY_COA_TEMPLATE = [
     // ASSETS (1000-1999)
-    { code: '1000', name: 'Cash on Hand', type: 'ASSET', description: 'Physical cash', isSystem: true },
-    { code: '1010', name: 'Checking Account', type: 'ASSET', description: 'Bank checking account', isSystem: true },
-    { code: '1020', name: 'Savings Account', type: 'ASSET', description: 'Bank savings account', isSystem: true },
-    { code: '1030', name: 'M-Pesa Wallet', type: 'ASSET', description: 'Mobile money wallet', isSystem: true },
-    { code: '1040', name: 'Airtel Money', type: 'ASSET', description: 'Airtel Money wallet', isSystem: false },
-    { code: '1050', name: 'PayPal', type: 'ASSET', description: 'PayPal account', isSystem: false },
-    { code: '1100', name: 'Accounts Receivable', type: 'ASSET', description: 'Money owed to family', isSystem: true },
-    { code: '1200', name: 'Prepaid Expenses', type: 'ASSET', description: 'Advance payments', isSystem: false },
+    // Cash & Bank Accounts (1000-1099)
+    { code: '1000', name: 'Cash on Hand', type: 'ASSET', description: 'Physical cash', isSystem: true, isContra: false },
+    { code: '1010', name: 'Checking Account', type: 'ASSET', description: 'Bank checking account', isSystem: true, isContra: false },
+    { code: '1020', name: 'Savings Account', type: 'ASSET', description: 'Bank savings account', isSystem: true, isContra: false },
+    { code: '1030', name: 'M-Pesa Wallet', type: 'ASSET', description: 'Mobile money wallet', isSystem: true, isContra: false },
+    { code: '1040', name: 'Airtel Money', type: 'ASSET', description: 'Airtel Money wallet', isSystem: false, isContra: false },
+    { code: '1050', name: 'PayPal', type: 'ASSET', description: 'PayPal account', isSystem: false, isContra: false },
+    { code: '1060', name: 'Undeposited Funds', type: 'ASSET', description: 'Cash received not yet deposited', isSystem: true, isContra: false },
+    { code: '1070', name: 'Clearing Account', type: 'ASSET', description: 'Temporary clearing account', isSystem: true, isContra: false },
+
+    // Receivables (1100-1199)
+    { code: '1100', name: 'Accounts Receivable', type: 'ASSET', description: 'Money owed by customers', isSystem: true, isContra: false },
+    { code: '1110', name: 'Notes Receivable', type: 'ASSET', description: 'Promissory notes from customers', isSystem: false, isContra: false },
+
+    // Prepayments (1200-1299)
+    { code: '1200', name: 'Prepaid Expenses', type: 'ASSET', description: 'Advance payments', isSystem: false, isContra: false },
+    { code: '1210', name: 'Prepaid Rent', type: 'ASSET', description: 'Rent paid in advance', isSystem: false, isContra: false },
+    { code: '1220', name: 'Prepaid Insurance', type: 'ASSET', description: 'Insurance paid in advance', isSystem: false, isContra: false },
+
+    // Inventory (1300-1399)
+    { code: '1300', name: 'Inventory - Finished Goods', type: 'ASSET', description: 'Finished products ready for sale', isSystem: true, isContra: false },
+    { code: '1310', name: 'Inventory - Raw Materials', type: 'ASSET', description: 'Raw materials for production', isSystem: false, isContra: false },
+    { code: '1320', name: 'Inventory - Work in Progress', type: 'ASSET', description: 'Goods in production', isSystem: false, isContra: false },
+
+    // VAT (1400-1499)
+    { code: '1400', name: 'VAT Receivable (Input VAT)', type: 'ASSET', description: 'VAT paid on purchases (16%)', isSystem: true, isContra: false },
+
+    // Fixed Assets (1500-1599)
+    { code: '1500', name: 'Equipment', type: 'ASSET', description: 'Business equipment', isSystem: true, isContra: false },
+    { code: '1510', name: 'Furniture & Fixtures', type: 'ASSET', description: 'Office furniture', isSystem: false, isContra: false },
+    { code: '1520', name: 'Vehicles', type: 'ASSET', description: 'Company vehicles', isSystem: false, isContra: false },
+    { code: '1530', name: 'Buildings', type: 'ASSET', description: 'Real estate property', isSystem: false, isContra: false },
+    { code: '1590', name: 'Accumulated Depreciation', type: 'ASSET', description: 'Contra-asset for depreciation', isSystem: true, isContra: true },
 
     // LIABILITIES (2000-2999)
-    { code: '2000', name: 'Credit Card', type: 'LIABILITY', description: 'Credit card balances', isSystem: true },
-    { code: '2010', name: 'Loans Payable', type: 'LIABILITY', description: 'Personal loans', isSystem: true },
-    { code: '2020', name: 'Accounts Payable', type: 'LIABILITY', description: 'Money owed to others', isSystem: true },
-    { code: '2030', name: 'Mortgage', type: 'LIABILITY', description: 'Home loan', isSystem: false },
+    // Current Liabilities (2000-2099)
+    { code: '2000', name: 'Credit Card', type: 'LIABILITY', description: 'Credit card balances', isSystem: true, isContra: false },
+    { code: '2010', name: 'Loans Payable', type: 'LIABILITY', description: 'Personal/business loans', isSystem: true, isContra: false },
+    { code: '2020', name: 'Accounts Payable', type: 'LIABILITY', description: 'Money owed to suppliers', isSystem: true, isContra: false },
+    { code: '2030', name: 'Mortgage', type: 'LIABILITY', description: 'Home/property loan', isSystem: false, isContra: false },
+
+    // VAT (2500-2599)
+    { code: '2500', name: 'VAT Payable (Output VAT)', type: 'LIABILITY', description: 'VAT collected on sales (16%)', isSystem: true, isContra: false },
+
+    // Customer Deposits (2600-2699)
+    { code: '2600', name: 'Customer Deposits', type: 'LIABILITY', description: 'Advance payments from customers', isSystem: true, isContra: false },
+    { code: '2610', name: 'Unearned Revenue', type: 'LIABILITY', description: 'Revenue received in advance', isSystem: false, isContra: false },
+
+    // Payroll Liabilities (2700-2799)
+    { code: '2700', name: 'PAYE Payable', type: 'LIABILITY', description: 'Income tax withheld from employees', isSystem: true, isContra: false },
+    { code: '2710', name: 'NSSF Payable', type: 'LIABILITY', description: 'National Social Security Fund', isSystem: true, isContra: false },
+    { code: '2720', name: 'NHIF Payable', type: 'LIABILITY', description: 'National Hospital Insurance Fund', isSystem: true, isContra: false },
 
     // EQUITY (3000-3999)
-    { code: '3000', name: 'Family Equity', type: 'EQUITY', description: 'Net worth / Opening balance', isSystem: true },
-    { code: '3010', name: 'Retained Savings', type: 'EQUITY', description: 'Accumulated savings', isSystem: true },
+    { code: '3000', name: 'Owner Equity', type: 'EQUITY', description: 'Owner capital / Opening balance', isSystem: true, isContra: false },
+    { code: '3010', name: 'Retained Earnings', type: 'EQUITY', description: 'Accumulated profits/savings', isSystem: true, isContra: false },
+    { code: '3020', name: 'Drawings', type: 'EQUITY', description: 'Owner withdrawals', isSystem: false, isContra: true },
 
     // INCOME (4000-4999)
-    { code: '4000', name: 'Salary Income', type: 'INCOME', description: 'Employment salary', isSystem: true },
-    { code: '4010', name: 'Business Income', type: 'INCOME', description: 'Side business / freelance', isSystem: true },
-    { code: '4020', name: 'Investment Income', type: 'INCOME', description: 'Dividends, interest', isSystem: true },
-    { code: '4030', name: 'Gift Income', type: 'INCOME', description: 'Monetary gifts received', isSystem: true },
-    { code: '4040', name: 'Rental Income', type: 'INCOME', description: 'Property rental income', isSystem: false },
-    { code: '4050', name: 'Other Income', type: 'INCOME', description: 'Miscellaneous income', isSystem: true },
+    // Personal Income (4000-4099)
+    { code: '4000', name: 'Salary Income', type: 'INCOME', description: 'Employment salary', isSystem: true, isContra: false },
+    { code: '4010', name: 'Business Income', type: 'INCOME', description: 'Side business / freelance', isSystem: true, isContra: false },
+    { code: '4020', name: 'Investment Income', type: 'INCOME', description: 'Dividends, interest', isSystem: true, isContra: false },
+    { code: '4030', name: 'Gift Income', type: 'INCOME', description: 'Monetary gifts received', isSystem: true, isContra: false },
+    { code: '4040', name: 'Rental Income', type: 'INCOME', description: 'Property rental income', isSystem: false, isContra: false },
+    { code: '4050', name: 'Other Income', type: 'INCOME', description: 'Miscellaneous income', isSystem: true, isContra: false },
+
+    // Sales Revenue (4100-4199)
+    { code: '4100', name: 'Product Sales', type: 'INCOME', description: 'Revenue from product sales', isSystem: true, isContra: false },
+    { code: '4110', name: 'Service Sales', type: 'INCOME', description: 'Revenue from service sales', isSystem: true, isContra: false },
+    { code: '4120', name: 'Sales Returns', type: 'INCOME', description: 'Returns and refunds (contra-revenue)', isSystem: true, isContra: true },
+    { code: '4130', name: 'Sales Discounts', type: 'INCOME', description: 'Discounts given to customers (contra-revenue)', isSystem: true, isContra: true },
+
+    // Other Revenue (4200-4299)
+    { code: '4200', name: 'Interest Income', type: 'INCOME', description: 'Interest earned on deposits', isSystem: false, isContra: false },
+    { code: '4210', name: 'Late Fee Income', type: 'INCOME', description: 'Late payment fees from customers', isSystem: false, isContra: false },
 
     // EXPENSES (5000-5999)
-    { code: '5000', name: 'Food & Groceries', type: 'EXPENSE', description: 'Food and grocery shopping', isSystem: true },
-    { code: '5010', name: 'Transport', type: 'EXPENSE', description: 'Fuel, fares, vehicle expenses', isSystem: true },
-    { code: '5020', name: 'Housing/Rent', type: 'EXPENSE', description: 'Rent and housing costs', isSystem: true },
-    { code: '5030', name: 'Utilities', type: 'EXPENSE', description: 'Electricity, water, internet', isSystem: true },
-    { code: '5040', name: 'Healthcare', type: 'EXPENSE', description: 'Medical expenses, insurance', isSystem: true },
-    { code: '5050', name: 'Education', type: 'EXPENSE', description: 'School fees, books, courses', isSystem: true },
-    { code: '5060', name: 'Entertainment', type: 'EXPENSE', description: 'Movies, dining out, hobbies', isSystem: true },
-    { code: '5070', name: 'Shopping', type: 'EXPENSE', description: 'Clothing, household items', isSystem: true },
-    { code: '5080', name: 'Communication', type: 'EXPENSE', description: 'Phone bills, airtime', isSystem: true },
-    { code: '5090', name: 'Personal Care', type: 'EXPENSE', description: 'Beauty, grooming', isSystem: false },
-    { code: '5100', name: 'Insurance', type: 'EXPENSE', description: 'Insurance premiums', isSystem: false },
-    { code: '5110', name: 'Donations/Tithe', type: 'EXPENSE', description: 'Charitable giving', isSystem: false },
-    { code: '5120', name: 'Childcare', type: 'EXPENSE', description: 'Daycare, babysitting', isSystem: false },
-    { code: '5130', name: 'Pet Care', type: 'EXPENSE', description: 'Pet food, vet bills', isSystem: false },
-    { code: '5140', name: 'Subscriptions', type: 'EXPENSE', description: 'Netflix, magazines, etc.', isSystem: false },
-    { code: '5150', name: 'Bank Fees', type: 'EXPENSE', description: 'Bank charges and fees', isSystem: true },
-    { code: '5199', name: 'Other Expenses', type: 'EXPENSE', description: 'Miscellaneous expenses', isSystem: true },
+    // Personal/Household Expenses (5000-5199)
+    { code: '5000', name: 'Food & Groceries', type: 'EXPENSE', description: 'Food and grocery shopping', isSystem: true, isContra: false },
+    { code: '5010', name: 'Transport', type: 'EXPENSE', description: 'Fuel, fares, vehicle expenses', isSystem: true, isContra: false },
+    { code: '5020', name: 'Housing/Rent', type: 'EXPENSE', description: 'Rent and housing costs', isSystem: true, isContra: false },
+    { code: '5030', name: 'Utilities', type: 'EXPENSE', description: 'Electricity, water, internet', isSystem: true, isContra: false },
+    { code: '5040', name: 'Healthcare', type: 'EXPENSE', description: 'Medical expenses, insurance', isSystem: true, isContra: false },
+    { code: '5050', name: 'Education', type: 'EXPENSE', description: 'School fees, books, courses', isSystem: true, isContra: false },
+    { code: '5060', name: 'Entertainment', type: 'EXPENSE', description: 'Movies, dining out, hobbies', isSystem: true, isContra: false },
+    { code: '5070', name: 'Shopping', type: 'EXPENSE', description: 'Clothing, household items', isSystem: true, isContra: false },
+    { code: '5080', name: 'Communication', type: 'EXPENSE', description: 'Phone bills, airtime', isSystem: true, isContra: false },
+    { code: '5090', name: 'Personal Care', type: 'EXPENSE', description: 'Beauty, grooming', isSystem: false, isContra: false },
+    { code: '5100', name: 'Insurance', type: 'EXPENSE', description: 'Insurance premiums', isSystem: false, isContra: false },
+    { code: '5110', name: 'Donations/Tithe', type: 'EXPENSE', description: 'Charitable giving', isSystem: false, isContra: false },
+    { code: '5120', name: 'Childcare', type: 'EXPENSE', description: 'Daycare, babysitting', isSystem: false, isContra: false },
+    { code: '5130', name: 'Pet Care', type: 'EXPENSE', description: 'Pet food, vet bills', isSystem: false, isContra: false },
+    { code: '5140', name: 'Subscriptions', type: 'EXPENSE', description: 'Netflix, magazines, etc.', isSystem: false, isContra: false },
+    { code: '5199', name: 'Other Expenses', type: 'EXPENSE', description: 'Miscellaneous expenses', isSystem: true, isContra: false },
+
+    // Cost of Goods Sold (5200-5249)
+    { code: '5200', name: 'Cost of Goods Sold', type: 'EXPENSE', description: 'Direct cost of products sold', isSystem: true, isContra: false },
+    { code: '5210', name: 'Purchase Discounts', type: 'EXPENSE', description: 'Discounts received on purchases (contra-expense)', isSystem: false, isContra: true },
+    { code: '5220', name: 'Freight & Shipping', type: 'EXPENSE', description: 'Freight and delivery costs', isSystem: false, isContra: false },
+
+    // Operating Expenses (5250-5299)
+    { code: '5250', name: 'Bank Charges', type: 'EXPENSE', description: 'Bank fees and charges', isSystem: true, isContra: false },
+    { code: '5260', name: 'Interest Expense', type: 'EXPENSE', description: 'Interest on loans and credit', isSystem: true, isContra: false },
+
+    // Depreciation (5300-5399)
+    { code: '5300', name: 'Depreciation Expense', type: 'EXPENSE', description: 'Fixed asset depreciation', isSystem: true, isContra: false },
+
+    // Payroll Expenses (5400-5499)
+    { code: '5400', name: 'Salaries & Wages', type: 'EXPENSE', description: 'Employee salaries', isSystem: true, isContra: false },
+    { code: '5410', name: 'Payroll Tax', type: 'EXPENSE', description: 'Employer payroll taxes', isSystem: false, isContra: false },
+    { code: '5420', name: 'Employee Benefits', type: 'EXPENSE', description: 'Health insurance, retirement', isSystem: false, isContra: false },
 ];
 
 // ============================================
@@ -91,6 +159,10 @@ const CATEGORY_ACCOUNT_MAP = {
     'Rental': { incomeAccount: '4040', defaultAssetAccount: '1010' },
     'Other Income': { incomeAccount: '4050', defaultAssetAccount: '1000' },
 
+    // Sales Revenue
+    'Product Sales': { incomeAccount: '4100', defaultAssetAccount: '1010' },
+    'Service Sales': { incomeAccount: '4110', defaultAssetAccount: '1010' },
+
     // Expense Categories
     'Food': { expenseAccount: '5000', defaultAssetAccount: '1000' },
     'Transport': { expenseAccount: '5010', defaultAssetAccount: '1000' },
@@ -104,6 +176,13 @@ const CATEGORY_ACCOUNT_MAP = {
     'Insurance': { expenseAccount: '5100', defaultAssetAccount: '1010' },
     'Donations': { expenseAccount: '5110', defaultAssetAccount: '1000' },
     'Other Expenses': { expenseAccount: '5199', defaultAssetAccount: '1000' },
+
+    // Business Expense Categories
+    'COGS': { expenseAccount: '5200', defaultAssetAccount: '1300' },
+    'Bank Charges': { expenseAccount: '5250', defaultAssetAccount: '1010' },
+    'Interest Expense': { expenseAccount: '5260', defaultAssetAccount: '1010' },
+    'Depreciation': { expenseAccount: '5300', defaultAssetAccount: '1590' },
+    'Salaries': { expenseAccount: '5400', defaultAssetAccount: '1010' },
 };
 
 // ============================================
@@ -137,6 +216,7 @@ export async function seedFamilyCoA(tenantId, currency = 'KES') {
             type: acc.type,
             description: acc.description || null,
             isSystem: acc.isSystem,
+            isContra: acc.isContra || false,
             isActive: true,
             currency,
         }));
