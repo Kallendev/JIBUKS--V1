@@ -336,7 +336,7 @@ router.post('/depreciation', async (req, res) => {
                     });
 
                     // 3. Create Journal Lines (Double-Entry)
-                    // Debit: Depreciation Expense
+                    // Debit: Depreciation Expense (account stored in asset.depreciationAccountId - should be 5300)
                     await tx.journalLine.create({
                         data: {
                             journalId: journal.id,
@@ -347,18 +347,16 @@ router.post('/depreciation', async (req, res) => {
                         }
                     });
 
-                    // Credit: Accumulated Depreciation (contra-asset)
-                    // Note: You'll need an Accumulated Depreciation account
+                    // Credit: Accumulated Depreciation (contra-asset account 1590)
                     const accDepAccount = await tx.account.findFirst({
                         where: {
                             tenantId,
-                            type: 'ASSET',
-                            name: { contains: 'Accumulated Depreciation', mode: 'insensitive' }
+                            code: '1590' // Standard Accumulated Depreciation account
                         }
                     });
 
                     if (!accDepAccount) {
-                        throw new Error('Accumulated Depreciation account not found');
+                        throw new Error('Accumulated Depreciation account (1590) not found. Please run CoA upgrade.');
                     }
 
                     await tx.journalLine.create({
