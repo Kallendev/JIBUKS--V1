@@ -18,7 +18,7 @@ export default function ChequesScreen() {
       id: 1,
       title: 'Write Cheque',
       icon: 'create',
-      route: '/cheques',
+      route: '/write-cheque',
       description: 'Issue a new cheque',
       color: '#fe9900',
     },
@@ -34,7 +34,7 @@ export default function ChequesScreen() {
       id: 3,
       title: 'Deposit Cheque',
       icon: 'arrow-down-circle',
-      route: '/banking',
+      route: '/deposit-cheque',
       description: 'Record cheque deposit',
       color: '#10b981',
     },
@@ -119,33 +119,90 @@ export default function ChequesScreen() {
         </View>
 
         {/* Recent Cheques */}
+        {/* Recent Cheques */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>RECENT CHEQUES</Text>
-          <View style={styles.chequeCard}>
-            <View style={styles.chequeItem}>
-              <View style={styles.chequeLeft}>
-                <Text style={styles.chequeName}>Rent Payment</Text>
-                <Text style={styles.chequeDate}>Jan 15, 2026</Text>
+          <View style={styles.chequeListCard}>
+
+            {/* Dashed Divider as per image */}
+            <View style={styles.dashedDivider} />
+
+            {/* Cheque #203 */}
+            <View style={styles.chequeRow}>
+              <View style={styles.chequeHeaderRow}>
+                <View style={styles.bulletPoint} />
+                <Text style={styles.chequeTitleText}>
+                  Cheque #203  -  School  -  KES 250  -  <Text style={{ color: '#fe9900' }}>Pending</Text>
+                </Text>
               </View>
-              <View style={styles.chequeRight}>
-                <Text style={styles.chequeAmount}>KES 25,000</Text>
-                <View style={[styles.statusBadge, { backgroundColor: '#fef3c7' }]}>
-                  <Text style={[styles.statusBadgeText, { color: '#f59e0b' }]}>Pending</Text>
-                </View>
+
+              <View style={styles.chequeDetailsRow}>
+                <Text style={styles.chequeDetailLabel}>Date: <Text style={styles.chequeDetailValue}>Jan 10</Text></Text>
+                <Text style={styles.chequeDetailLabel}>Bank: <Text style={styles.chequeDetailValue}>Bank A</Text></Text>
+              </View>
+
+              <View style={styles.chequeActionsRow}>
+                <TouchableOpacity style={styles.actionBtnOutline}>
+                  <Text style={styles.actionBtnText}>Mark Cleared</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionBtnOutline} onPress={() => router.push('/cheque-details')}>
+                  <Text style={styles.actionBtnText}>View Details</Text>
+                </TouchableOpacity>
               </View>
             </View>
-            <View style={styles.chequeItem}>
-              <View style={styles.chequeLeft}>
-                <Text style={styles.chequeName}>Supplier Payment</Text>
-                <Text style={styles.chequeDate}>Jan 10, 2026</Text>
+
+            <View style={styles.itemSeparator} />
+
+            {/* Cheque #204 */}
+            <View style={styles.chequeRow}>
+              <View style={styles.chequeHeaderRow}>
+                <View style={styles.bulletPoint} />
+                <Text style={styles.chequeTitleText}>
+                  Cheque #204  -  Landlord  -  KES 500  -  <Text style={{ color: '#122f8a' }}>Cleared</Text>
+                </Text>
               </View>
-              <View style={styles.chequeRight}>
-                <Text style={styles.chequeAmount}>KES 15,500</Text>
-                <View style={[styles.statusBadge, { backgroundColor: '#d1fae5' }]}>
-                  <Text style={[styles.statusBadgeText, { color: '#10b981' }]}>Cleared</Text>
-                </View>
+
+              <View style={styles.chequeDetailsRow}>
+                <Text style={styles.chequeDetailLabel}>Date: <Text style={styles.chequeDetailValue}>Jan 01</Text></Text>
+                <Text style={styles.chequeDetailLabel}>Bank: <Text style={styles.chequeDetailValue}>Bank A</Text></Text>
+              </View>
+
+              <View style={styles.chequeActionsRow}>
+                <TouchableOpacity style={styles.actionBtnOutline}>
+                  <Text style={styles.actionBtnText}>Receipt</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionBtnOutline} onPress={() => router.push('/cheque-details')}>
+                  <Text style={styles.actionBtnText}>View Details</Text>
+                </TouchableOpacity>
               </View>
             </View>
+
+            <View style={styles.itemSeparator} />
+
+            {/* Cheque #205 */}
+            <View style={styles.chequeRow}>
+              <View style={styles.chequeHeaderRow}>
+                <View style={styles.bulletPoint} />
+                <Text style={styles.chequeTitleText}>
+                  Cheque #205  -  Fuel St.  -  KES 90  -  <Text style={{ color: '#10b981' }}>Deposited</Text>
+                </Text>
+              </View>
+
+              <View style={styles.chequeDetailsRow}>
+                <Text style={styles.chequeDetailLabel}>Date: <Text style={styles.chequeDetailValue}>Jan 14</Text></Text>
+                <Text style={styles.chequeDetailLabel}>Bank: <Text style={styles.chequeDetailValue}>Wallet</Text></Text>
+              </View>
+
+              <View style={styles.chequeActionsRow}>
+                <TouchableOpacity style={styles.actionBtnOutline}>
+                  <Text style={styles.actionBtnText}>View Deposit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionBtnOutline} onPress={() => router.push('/cheque-details')}>
+                  <Text style={styles.actionBtnText}>View Details</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
           </View>
         </View>
 
@@ -347,5 +404,84 @@ const styles = StyleSheet.create({
   statusBadgeText: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  chequeListCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  dashedDivider: {
+    height: 1,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderStyle: 'dashed',
+    marginBottom: 20,
+    marginTop: 10,
+  },
+  chequeRow: {
+    marginBottom: 4,
+  },
+  chequeHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  bulletPoint: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#475569',
+    marginRight: 10,
+    marginTop: 2,
+  },
+  chequeTitleText: {
+    fontSize: 14,
+    color: '#334155',
+    fontWeight: '600',
+    flex: 1,
+    lineHeight: 20,
+  },
+  chequeDetailsRow: {
+    flexDirection: 'row',
+    marginLeft: 16,
+    marginBottom: 12,
+    gap: 30,
+  },
+  chequeDetailLabel: {
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '400',
+  },
+  chequeDetailValue: {
+    color: '#1e293b',
+    fontWeight: '500',
+  },
+  chequeActionsRow: {
+    flexDirection: 'row',
+    marginLeft: 16,
+    gap: 12,
+  },
+  actionBtnOutline: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#f8fafc',
+  },
+  actionBtnText: {
+    fontSize: 12,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  itemSeparator: {
+    height: 24,
   },
 });

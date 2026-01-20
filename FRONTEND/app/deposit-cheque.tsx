@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     View,
     Text,
@@ -18,76 +18,45 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Picker } from '@react-native-picker/picker'; // Standard picker
-import apiService from '@/services/api';
 
-export default function WriteChequeScreen() {
+export default function DepositChequeScreen() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
-    const [loadingData, setLoadingData] = useState(true);
-
-    // Data Sources
-    const [vendors, setVendors] = useState<any[]>([]);
-    const [accounts, setAccounts] = useState<any[]>([]);
 
     // Form State
+    const [depositor, setDepositor] = useState('');
     const [chequeNumber, setChequeNumber] = useState('');
-    const [payeeId, setPayeeId] = useState('');
     const [amount, setAmount] = useState('');
-    const [date, setDate] = useState(new Date());
-    const [bankAccountId, setBankAccountId] = useState('');
-    const [memo, setMemo] = useState('');
+    const [bankAccount, setBankAccount] = useState('');
     const [imageUri, setImageUri] = useState<string | null>(null);
 
-    useEffect(() => {
-        loadData();
-    }, []);
+    // Dates
+    const [depositDate, setDepositDate] = useState(new Date());
 
-    const loadData = async () => {
-        try {
-            setLoadingData(true);
-            const [vendorsData, accountsData] = await Promise.all([
-                apiService.getVendors(),
-                apiService.getAccounts() // Assuming this returns all accounts
-            ]);
+    // Auto-calculate Clear Date (e.g., +3 days)
+    const clearDate = useMemo(() => {
+        const date = new Date(depositDate);
+        date.setDate(date.getDate() + 3);
+        return date;
+    }, [depositDate]);
 
-            setVendors(vendorsData || []);
+    // Mock Data
+    const members = [
+        { label: 'Select Member', value: '' },
+        { label: 'John Doe (Admin)', value: 'john' },
+        { label: 'Jane Smith (Treasurer)', value: 'jane' },
+        { label: 'Robert Brown', value: 'robert' },
+    ];
 
-            // Filter only Asset/Bank accounts
-            const banks = accountsData.filter((a: any) =>
-                (a.type === 'ASSET' || a.type === 'BANK')
-            );
-            setAccounts(banks.length > 0 ? banks : [
-                { id: '1', name: 'Equity Bank', code: '1001' },
-                { id: '2', name: 'KCB Bank', code: '1002' },
-            ]); // Fallback if no accounts
+    const bankAccounts = [
+        { label: 'Choose Account', value: '' },
+        { label: 'Equity Bank - 123456789', value: 'equity_main' },
+        { label: 'KCB Bank - 987654321', value: 'kcb_savings' },
+        { label: 'Co-op Bank - 456123789', value: 'coop_biz' },
+    ];
 
-            // Mock vendors if empty
-            if (!vendorsData || vendorsData.length === 0) {
-                setVendors([
-                    { id: 1, name: 'Acme Supplies' },
-                    { id: 2, name: 'Global Traders' },
-                    { id: 3, name: 'Local Utilities' }
-                ]);
-            }
-
-        } catch (error) {
-            console.error('Error loading data:', error);
-            // Fallback mock
-            setVendors([
-                { id: 1, name: 'Acme Supplies' },
-                { id: 2, name: 'Global Traders' }
-            ]);
-            setAccounts([
-                { id: '1', name: 'Equity Bank', code: '1001' },
-                { id: '2', name: 'KCB Bank', code: '1002' },
-            ]);
-        } finally {
-            setLoadingData(false);
-        }
-    };
-
-    const formatDate = (d: Date) => {
-        return d.toLocaleDateString('en-US', {
+    const formatDate = (date: Date) => {
+        return date.toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
             year: 'numeric',
@@ -107,35 +76,20 @@ export default function WriteChequeScreen() {
         }
     };
 
-    const handleSave = async () => {
-        if (!chequeNumber || !payeeId || !amount || !bankAccountId) {
-            Alert.alert('Missing Fields', 'Please fill in all required fields (Cheque #, Payee, Amount, Bank).');
+    const handleDeposit = async () => {
+        if (!depositor || !chequeNumber || !amount || !bankAccount) {
+            Alert.alert('Missing Fields', 'Please fill in all required fields.');
             return;
         }
 
         setLoading(true);
-        try {
-            const payload = {
-                chequeNumber,
-                payeeId,
-                amount: parseFloat(amount),
-                date: date.toISOString(),
-                bankAccountId,
-                memo,
-                imageUri
-            };
-
-            await apiService.writeCheque(payload);
-            Alert.alert('Success', 'Cheque saved successfully');
-            router.back();
-        } catch (error) {
-            console.error('Error saving cheque:', error);
-            // Simulate success for demo if backend fails
-            Alert.alert('Success', 'Cheque saved successfully (Demo Mode)');
-            router.back();
-        } finally {
+        // Simulate API call
+        setTimeout(() => {
             setLoading(false);
-        }
+            Alert.alert('Success', 'Cheque deposited successfully!', [
+                { text: 'OK', onPress: () => router.back() }
+            ]);
+        }, 1500);
     };
 
     return (
@@ -152,7 +106,7 @@ export default function WriteChequeScreen() {
                         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                             <Ionicons name="arrow-back" size={24} color="#ffffff" />
                         </TouchableOpacity>
-                        <Text style={styles.headerTitle}>Write Cheque</Text>
+                        <Text style={styles.headerTitle}>Deposit Cheque</Text>
                         <View style={{ width: 40 }} />
                     </View>
                 </LinearGradient>
@@ -167,9 +121,28 @@ export default function WriteChequeScreen() {
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
+                    {/* Main Form Card */}
                     <View style={styles.card}>
-                        <Text style={styles.formTitle}>Cheque Details</Text>
+
+                        {/* Title inside card as per image design hint */}
+                        <Text style={styles.formTitle}>Deposit Details</Text>
                         <View style={styles.divider} />
+
+                        {/* Depositor */}
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Depositor:</Text>
+                            <View style={styles.pickerWrapper}>
+                                <Picker
+                                    selectedValue={depositor}
+                                    onValueChange={(itemValue) => setDepositor(itemValue)}
+                                    style={styles.picker}
+                                >
+                                    {members.map((m) => (
+                                        <Picker.Item key={m.value} label={m.label} value={m.value} style={{ fontSize: 14 }} color="#1f2937" />
+                                    ))}
+                                </Picker>
+                            </View>
+                        </View>
 
                         {/* Cheque Number */}
                         <View style={styles.inputContainer}>
@@ -178,37 +151,10 @@ export default function WriteChequeScreen() {
                                 style={styles.textInput}
                                 value={chequeNumber}
                                 onChangeText={setChequeNumber}
-                                placeholder="e.g. 203"
+                                placeholder="e.g. 000123"
                                 keyboardType="numeric"
                                 placeholderTextColor="#9ca3af"
                             />
-                        </View>
-
-                        {/* Payee (Supplier) */}
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.label}>Payee (Supplier):</Text>
-                            <View style={styles.pickerWrapper}>
-                                {loadingData ? (
-                                    <ActivityIndicator size="small" color="#122f8a" />
-                                ) : (
-                                    <Picker
-                                        selectedValue={payeeId}
-                                        onValueChange={(itemValue) => setPayeeId(String(itemValue))}
-                                        style={styles.picker}
-                                    >
-                                        <Picker.Item label="Choose Supplier" value="" style={{ fontSize: 14 }} color="#6b7280" />
-                                        {vendors.map((v) => (
-                                            <Picker.Item
-                                                key={v.id}
-                                                label={v.name}
-                                                value={String(v.id)}
-                                                style={{ fontSize: 14 }}
-                                                color="#1f2937"
-                                            />
-                                        ))}
-                                    </Picker>
-                                )}
-                            </View>
                         </View>
 
                         {/* Amount */}
@@ -224,50 +170,41 @@ export default function WriteChequeScreen() {
                             />
                         </View>
 
-                        {/* Date */}
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.label}>Date:</Text>
-                            <View style={styles.dateDisplay}>
-                                <Text style={styles.dateText}>{formatDate(date)}</Text>
-                                <Ionicons name="calendar-outline" size={18} color="#122f8a" />
-                            </View>
-                        </View>
-
                         {/* Bank Account */}
                         <View style={styles.inputContainer}>
                             <Text style={styles.label}>Bank Account:</Text>
                             <View style={styles.pickerWrapper}>
                                 <Picker
-                                    selectedValue={bankAccountId}
-                                    onValueChange={(val) => setBankAccountId(String(val))}
+                                    selectedValue={bankAccount}
+                                    onValueChange={(itemValue) => setBankAccount(itemValue)}
                                     style={styles.picker}
                                 >
-                                    <Picker.Item label="Choose Account" value="" style={{ fontSize: 14 }} color="#6b7280" />
-                                    {accounts.map((a) => (
-                                        <Picker.Item
-                                            key={a.id}
-                                            label={a.name}
-                                            value={String(a.id)}
-                                            style={{ fontSize: 14 }}
-                                            color="#1f2937"
-                                        />
+                                    {bankAccounts.map((b) => (
+                                        <Picker.Item key={b.value} label={b.label} value={b.value} style={{ fontSize: 14 }} color="#1f2937" />
                                     ))}
                                 </Picker>
                             </View>
                         </View>
 
-                        {/* Memo */}
-                        <View style={[styles.inputContainer, { alignItems: 'flex-start' }]}>
-                            <Text style={[styles.label, { marginTop: 12 }]}>Memo / Reason:</Text>
-                            <TextInput
-                                style={[styles.textInput, styles.textArea]}
-                                value={memo}
-                                onChangeText={setMemo}
-                                multiline
-                                numberOfLines={3}
-                                placeholder="Brief description..."
-                                placeholderTextColor="#9ca3af"
-                            />
+                        <View style={styles.divider} />
+
+                        {/* Deposit Date */}
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Deposit Date:</Text>
+                            <View style={styles.dateDisplay}>
+                                <Text style={styles.dateText}>{formatDate(depositDate)}</Text>
+                                <Ionicons name="calendar-outline" size={18} color="#122f8a" />
+                            </View>
+                        </View>
+
+                        {/* Expected Clear Date */}
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Expected Clear Date:</Text>
+                            <View style={styles.autoDateDisplay}>
+                                <Text style={styles.autoLabel}>Auto</Text>
+                                <Ionicons name="arrow-forward" size={14} color="#fe9900" style={{ marginHorizontal: 6 }} />
+                                <Text style={styles.autoDateText}>{formatDate(clearDate)}</Text>
+                            </View>
                         </View>
 
                         {/* Attach Photo */}
@@ -280,7 +217,7 @@ export default function WriteChequeScreen() {
                                 >
                                     <Ionicons name="camera" size={20} color="#ffffff" />
                                     <Text style={styles.uploadButtonText}>
-                                        {imageUri ? 'Cheque Attached' : 'Upload Image'}
+                                        {imageUri ? 'Photo Attached' : 'Upload'}
                                     </Text>
                                 </TouchableOpacity>
                                 {imageUri && (
@@ -288,17 +225,18 @@ export default function WriteChequeScreen() {
                                 )}
                             </View>
                         </View>
+
                     </View>
 
                     {/* Actions */}
                     <View style={styles.actionsContainer}>
                         <TouchableOpacity
-                            style={[styles.actionButton, styles.saveButton]}
-                            onPress={handleSave}
+                            style={[styles.actionButton, styles.depositButton]}
+                            onPress={handleDeposit}
                             disabled={loading}
                         >
                             {loading ? <ActivityIndicator color="#fff" /> : (
-                                <Text style={styles.saveButtonText}>Save Cheque</Text>
+                                <Text style={styles.depositButtonText}>Deposit</Text>
                             )}
                         </TouchableOpacity>
 
@@ -401,10 +339,6 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: '#1e293b',
     },
-    textArea: {
-        minHeight: 80,
-        textAlignVertical: 'top',
-    },
     pickerWrapper: {
         flex: 1,
         borderWidth: 1,
@@ -412,7 +346,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         backgroundColor: '#f8fafc',
         overflow: 'hidden',
-        height: 50,
+        height: 50, // Fixed height for consistent look
         justifyContent: 'center',
     },
     picker: {
@@ -436,10 +370,31 @@ const styles = StyleSheet.create({
         color: '#1e293b',
         fontWeight: '500',
     },
+    autoDateDisplay: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff7ed', // Light orange bg for auto
+        borderWidth: 1,
+        borderColor: '#fdba74',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+    },
+    autoLabel: {
+        fontSize: 12,
+        color: '#9a3412',
+        fontWeight: '700',
+    },
+    autoDateText: {
+        fontSize: 15,
+        color: '#1e293b',
+        fontWeight: '600',
+    },
     uploadButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1e293b',
+        backgroundColor: '#1e293b', // Dark button for contrast or image placeholder
         paddingHorizontal: 16,
         paddingVertical: 10,
         borderRadius: 8,
@@ -460,8 +415,8 @@ const styles = StyleSheet.create({
     },
     actionsContainer: {
         flexDirection: 'row',
-        justifyContent: 'flex-start',
-        gap: 20,
+        justifyContent: 'flex-start', // Left aligned to match image somewhat, or centered? Image shows them separate.
+        gap: 20, // Space between buttons
         marginTop: 30,
         paddingHorizontal: 10,
     },
@@ -473,7 +428,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         minWidth: 100,
     },
-    saveButton: {
+    depositButton: {
         backgroundColor: '#122f8a', // Brand Blue
         shadowColor: '#122f8a',
         shadowOffset: { width: 0, height: 2 },
@@ -481,7 +436,7 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 4,
     },
-    saveButtonText: {
+    depositButtonText: {
         color: '#ffffff',
         fontWeight: 'bold',
         fontSize: 16,
