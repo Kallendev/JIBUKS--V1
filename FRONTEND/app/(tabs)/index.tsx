@@ -76,7 +76,7 @@ export default function HomeScreen() {
               {/* Main Balance */}
               <View style={styles.mainBalanceSection}>
                 <Text style={styles.balanceLabel}>NET BALANCE</Text>
-                <Text style={styles.balanceAmount}>KES 1,250,500</Text>
+                <Text style={styles.balanceAmount}>KES 45,000</Text>
               </View>
 
               <View style={styles.divider} />
@@ -143,11 +143,11 @@ export default function HomeScreen() {
               <Text style={styles.actionLabel}>Deposit</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/customers')}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/household-assets')}>
               <View style={[styles.actionIcon, { backgroundColor: '#f0f9ff' }]}>
-                <Ionicons name="people" size={24} color="#0284c7" />
+                <Ionicons name="cube" size={24} color="#0284c7" />
               </View>
-              <Text style={styles.actionLabel}>Customers</Text>
+              <Text style={styles.actionLabel}>Assets</Text>
             </TouchableOpacity>
 
             {/* Row 2: Money Out */}
