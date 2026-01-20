@@ -83,7 +83,7 @@ export default function HomeScreen() {
 
               {/* Three-Column Stats Grid */}
               <View style={styles.statsGrid}>
-                {/* Income */}
+                {/* Money In */}
                 <View style={styles.statItem}>
                   <View style={[styles.statIcon, { backgroundColor: '#dcfce7' }]}>
                     <Ionicons name="arrow-down" size={14} color="#15803d" />
@@ -96,7 +96,7 @@ export default function HomeScreen() {
 
                 <View style={styles.verticalDivider} />
 
-                {/* Expense */}
+                {/* Money Out */}
                 <View style={styles.statItem}>
                   <View style={[styles.statIcon, { backgroundColor: '#fee2e2' }]}>
                     <Ionicons name="arrow-up" size={14} color="#ef4444" />
@@ -128,36 +128,15 @@ export default function HomeScreen() {
         <View style={styles.sectionContainer}>
           <View style={styles.actionsGrid}>
 
-            {/* Row 1: Money In */}
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/create-invoice')}>
-              <View style={[styles.actionIcon, { backgroundColor: '#ecfdf5' }]}>
-                <Ionicons name="receipt" size={24} color="#059669" />
-              </View>
-              <Text style={styles.actionLabel}>Invoice</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/deposit-cheque')}>
-              <View style={[styles.actionIcon, { backgroundColor: '#ecfdf5' }]}>
-                <Ionicons name="arrow-down-circle" size={24} color="#059669" />
-              </View>
-              <Text style={styles.actionLabel}>Deposit</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/household-assets')}>
-              <View style={[styles.actionIcon, { backgroundColor: '#f0f9ff' }]}>
-                <Ionicons name="cube" size={24} color="#0284c7" />
-              </View>
-              <Text style={styles.actionLabel}>Assets</Text>
-            </TouchableOpacity>
-
-            {/* Row 2: Money Out */}
+            {/* 1. Purchase */}
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/new-purchase')}>
-              <View style={[styles.actionIcon, { backgroundColor: '#fff7ed' }]}>
-                <Ionicons name="document-text" size={24} color="#ea580c" />
+              <View style={[styles.actionIcon, { backgroundColor: '#f3e8ff' }]}>
+                <Ionicons name="cart" size={24} color="#7c3aed" />
               </View>
-              <Text style={styles.actionLabel}>Enter Bill</Text>
+              <Text style={styles.actionLabel}>Purchase</Text>
             </TouchableOpacity>
 
+            {/* 2. Expense */}
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/add-expense')}>
               <View style={[styles.actionIcon, { backgroundColor: '#fff7ed' }]}>
                 <Ionicons name="receipt-outline" size={24} color="#ea580c" />
@@ -165,21 +144,15 @@ export default function HomeScreen() {
               <Text style={styles.actionLabel}>Expense</Text>
             </TouchableOpacity>
 
+            {/* 3. Enter Bill */}
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/new-purchase')}>
               <View style={[styles.actionIcon, { backgroundColor: '#fff7ed' }]}>
-                <Ionicons name="cart" size={24} color="#ea580c" />
+                <Ionicons name="document-text" size={24} color="#d97706" />
               </View>
-              <Text style={styles.actionLabel}>Purchase</Text>
+              <Text style={styles.actionLabel}>Enter Bill</Text>
             </TouchableOpacity>
 
-            {/* Row 3: Management */}
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/transactions')}>
-              <View style={[styles.actionIcon, { backgroundColor: '#f5f3ff' }]}>
-                <Ionicons name="wallet" size={24} color="#7c3aed" />
-              </View>
-              <Text style={styles.actionLabel}>Cheque</Text>
-            </TouchableOpacity>
-
+            {/* 4. Supplier */}
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/analytics')}>
               <View style={[styles.actionIcon, { backgroundColor: '#e0e7ff' }]}>
                 <Ionicons name="people" size={24} color="#4338ca" />
@@ -187,6 +160,55 @@ export default function HomeScreen() {
               <Text style={styles.actionLabel}>Supplier</Text>
             </TouchableOpacity>
 
+            {/* 5. Cheque */}
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/transactions')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#f0f9ff' }]}>
+                <Ionicons name="wallet" size={24} color="#0284c7" />
+              </View>
+              <Text style={styles.actionLabel}>Cheque</Text>
+            </TouchableOpacity>
+
+            {/* 6. Deposit */}
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/deposit-cheque')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#ecfdf5' }]}>
+                <Ionicons name="arrow-down-circle" size={24} color="#059669" />
+              </View>
+              <Text style={styles.actionLabel}>Deposit</Text>
+            </TouchableOpacity>
+
+            {/* 7. Income */}
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/add-income')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#dcfce7' }]}>
+                <Ionicons name="cash" size={24} color="#15803d" />
+              </View>
+              <Text style={styles.actionLabel}>Income</Text>
+            </TouchableOpacity>
+
+            {/* 8. Transfer */}
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/banking')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#cffafe' }]}>
+                <Ionicons name="swap-horizontal" size={24} color="#0891b2" />
+              </View>
+              <Text style={styles.actionLabel}>Transfer</Text>
+            </TouchableOpacity>
+
+            {/* 9. Receipt Upload */}
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/add-expense')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#ffe4e6' }]}>
+                <Ionicons name="camera" size={24} color="#e11d48" />
+              </View>
+              <Text style={styles.actionLabel}>Receipt Upload</Text>
+            </TouchableOpacity>
+
+            {/* 10. Add Asset */}
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/household-assets')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#f1f5f9' }]}>
+                <Ionicons name="add-circle" size={24} color="#475569" />
+              </View>
+              <Text style={styles.actionLabel}>Add Asset</Text>
+            </TouchableOpacity>
+
+            {/* 11. Reports */}
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/community')}>
               <View style={[styles.actionIcon, { backgroundColor: '#f1f5f9' }]}>
                 <Ionicons name="stats-chart" size={24} color="#475569" />

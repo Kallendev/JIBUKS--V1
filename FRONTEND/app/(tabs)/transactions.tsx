@@ -6,207 +6,190 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  TextInput,
+  Dimensions,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
 
 export default function ChequesScreen() {
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const menuItems = [
-    {
-      id: 1,
-      title: 'Write Cheque',
-      icon: 'create',
-      route: '/write-cheque',
-      description: 'Issue a new cheque',
-      color: '#fe9900',
-    },
-    {
-      id: 2,
-      title: 'Track Pending',
-      icon: 'time',
-      route: '/pending-cheques',
-      description: 'View pending cheques',
-      color: '#f59e0b',
-    },
-    {
-      id: 3,
-      title: 'Deposit Cheque',
-      icon: 'arrow-down-circle',
-      route: '/deposit-cheque',
-      description: 'Record cheque deposit',
-      color: '#10b981',
-    },
+  // Mock Data
+  const cheques = [
+    { id: 204, payee: 'City School', amount: 15000, date: 'Jan 15, 2026', status: 'pending', bank: 'Equity Bank' },
+    { id: 203, payee: 'Naivas Supermarket', amount: 8200, date: 'Jan 12, 2026', status: 'cleared', bank: 'KCB Bank' },
+    { id: 202, payee: 'Landlord - Jan Rent', amount: 25000, date: 'Jan 05, 2026', status: 'cleared', bank: 'Co-op Bank' },
+    { id: 201, payee: 'Supplier - Electronics', amount: 45000, date: 'Dec 28, 2025', status: 'bounced', bank: 'Equity Bank' },
+    { id: 200, payee: 'Water Bill', amount: 2500, date: 'Dec 20, 2025', status: 'cleared', bank: 'M-Pesa' },
   ];
+
+  const filteredCheques = cheques.filter(cheque =>
+    cheque.payee.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    cheque.id.toString().includes(searchQuery)
+  );
+
+  const totalWritten = cheques.length;
+  const pendingCount = cheques.filter(c => c.status === 'pending').length;
+  const bouncedCount = cheques.filter(c => c.status === 'bounced').length;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'cleared': return '#10b981';
+      case 'pending': return '#f59e0b';
+      case 'bounced': return '#ef4444';
+      default: return '#6b7280';
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return `KES ${amount.toLocaleString()}`;
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Ionicons name="wallet" size={24} color="#ffffff" />
-          <Text style={styles.headerTitle}>Cheques</Text>
+      <StatusBar barStyle="light-content" backgroundColor="#122f8a" />
+
+      {/* Creative Header */}
+      <View style={styles.headerContainer}>
+        <LinearGradient
+          colors={['#122f8a', '#0a1a5c']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
+          {/* Header Content */}
+          <View style={styles.headerTop}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Cheques</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          {/* Stats Overview */}
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>Total Written</Text>
+              <Text style={styles.statValue}>{totalWritten}</Text>
+            </View>
+            <View style={styles.verticalDivider} />
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>Pending</Text>
+              <Text style={[styles.statValue, { color: '#fcd34d' }]}>{pendingCount}</Text>
+            </View>
+            <View style={styles.verticalDivider} />
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>Bounced</Text>
+              <Text style={[styles.statValue, { color: '#fca5a5' }]}>{bouncedCount}</Text>
+            </View>
+          </View>
+        </LinearGradient>
+
+        {/* Floating Search Bar */}
+        <View style={styles.searchContainerWrapper}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color="#94a3b8" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search by Cheque # or Payee..."
+              placeholderTextColor="#94a3b8"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              keyboardType="default"
+            />
+            {searchQuery ? (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={20} color="#94a3b8" />
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Summary Cards */}
-        <View style={styles.summarySection}>
-          <TouchableOpacity style={styles.summaryCard} onPress={() => router.push('/pending-cheques')}>
-            <Ionicons name="time" size={28} color="#f59e0b" />
-            <Text style={styles.summaryNumber}>2</Text>
-            <Text style={styles.summaryLabel}>Pending</Text>
+
+        {/* Quick Actions */}
+        <View style={styles.quickActionRow}>
+          <TouchableOpacity style={styles.quickActionBtn} onPress={() => router.push('/write-cheque')}>
+            <View style={[styles.quickActionIcon, { backgroundColor: '#f3e8ff' }]}>
+              <Ionicons name="create" size={20} color="#7c3aed" />
+            </View>
+            <Text style={styles.quickActionLabel}>Write</Text>
           </TouchableOpacity>
-          <View style={styles.summaryCard}>
-            <Ionicons name="checkmark-circle" size={28} color="#10b981" />
-            <Text style={styles.summaryNumber}>5</Text>
-            <Text style={styles.summaryLabel}>Cleared</Text>
-          </View>
-          <View style={styles.summaryCard}>
-            <Ionicons name="arrow-down-circle" size={28} color="#2563eb" />
-            <Text style={styles.summaryNumber}>1</Text>
-            <Text style={styles.summaryLabel}>Deposited</Text>
-          </View>
+
+          <TouchableOpacity style={styles.quickActionBtn} onPress={() => router.push('/deposit-cheque')}>
+            <View style={[styles.quickActionIcon, { backgroundColor: '#ecfdf5' }]}>
+              <Ionicons name="arrow-down-circle" size={20} color="#059669" />
+            </View>
+            <Text style={styles.quickActionLabel}>Deposit</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.quickActionBtn} onPress={() => router.push('/pending-cheques')}>
+            <View style={[styles.quickActionIcon, { backgroundColor: '#fff7ed' }]}>
+              <Ionicons name="time" size={20} color="#ea580c" />
+            </View>
+            <Text style={styles.quickActionLabel}>Pending</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Status Overview */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>CHEQUE STATUS</Text>
-          <View style={styles.statusCard}>
-            <TouchableOpacity style={styles.statusRow} onPress={() => router.push('/pending-cheques')}>
-              <View style={[styles.statusDot, { backgroundColor: '#f59e0b' }]} />
-              <Text style={styles.statusLabel}>Pending</Text>
-              <Text style={styles.statusValue}>2 cheques</Text>
-            </TouchableOpacity>
-            <View style={styles.statusRow}>
-              <View style={[styles.statusDot, { backgroundColor: '#10b981' }]} />
-              <Text style={styles.statusLabel}>Cleared</Text>
-              <Text style={styles.statusValue}>5 cheques</Text>
-            </View>
-            <View style={styles.statusRow}>
-              <View style={[styles.statusDot, { backgroundColor: '#2563eb' }]} />
-              <Text style={styles.statusLabel}>Deposited</Text>
-              <Text style={styles.statusValue}>1 cheque</Text>
-            </View>
-            <View style={styles.statusRow}>
-              <View style={[styles.statusDot, { backgroundColor: '#ef4444' }]} />
-              <Text style={styles.statusLabel}>Returned</Text>
-              <Text style={styles.statusValue}>0 cheques</Text>
-            </View>
-          </View>
-        </View>
+        {/* Cheques List */}
+        <View style={styles.listContainer}>
+          <Text style={styles.sectionTitle}>Recent Transactions</Text>
 
-        {/* Menu Items */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>CHEQUE MANAGEMENT</Text>
-          {menuItems.map((item) => (
+          {filteredCheques.map((cheque) => (
             <TouchableOpacity
-              key={item.id}
-              style={styles.menuItem}
-              onPress={() => router.push(item.route as any)}
+              key={cheque.id}
+              style={styles.chequeCard}
+              onPress={() => router.push('/cheque-details')}
             >
-              <View style={[styles.menuIconContainer, { backgroundColor: `${item.color}15` }]}>
-                <Ionicons name={item.icon as any} size={24} color={item.color} />
+              {/* Top Row: Icon + Payee + Amount */}
+              <View style={styles.cardTopRow}>
+                <View style={[styles.iconContainer, { backgroundColor: '#f1f5f9' }]}>
+                  <Ionicons name="wallet-outline" size={24} color="#334155" />
+                </View>
+                <View style={styles.cardMainInfo}>
+                  <Text style={styles.payeeName}>{cheque.payee}</Text>
+                  <Text style={styles.chequeNumber}>#{cheque.id} • {cheque.bank}</Text>
+                </View>
+                <Text style={styles.amountText}>{formatCurrency(cheque.amount)}</Text>
               </View>
-              <View style={styles.menuContent}>
-                <Text style={styles.menuTitle}>{item.title}</Text>
-                <Text style={styles.menuDescription}>{item.description}</Text>
+
+              {/* Divider */}
+              <View style={styles.cardDivider} />
+
+              {/* Bottom Row: Status + Date + Action */}
+              <View style={styles.cardBottomRow}>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(cheque.status) + '20' }]}>
+                  <View style={[styles.statusDot, { backgroundColor: getStatusColor(cheque.status) }]} />
+                  <Text style={[styles.statusText, { color: getStatusColor(cheque.status) }]}>
+                    {cheque.status.charAt(0).toUpperCase() + cheque.status.slice(1)}
+                  </Text>
+                </View>
+
+                <View style={styles.dateContainer}>
+                  <Ionicons name="calendar-outline" size={14} color="#94a3b8" />
+                  <Text style={styles.dateText}>{cheque.date}</Text>
+                </View>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
             </TouchableOpacity>
           ))}
+
+          {filteredCheques.length === 0 && (
+            <View style={styles.emptyState}>
+              <Ionicons name="search-outline" size={48} color="#cbd5e1" />
+              <Text style={styles.emptyText}>No cheques found</Text>
+              <Text style={styles.emptySubtext}>Try a different search term</Text>
+            </View>
+          )}
         </View>
 
-        {/* Recent Cheques */}
-        {/* Recent Cheques */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>RECENT CHEQUES</Text>
-          <View style={styles.chequeListCard}>
-
-            {/* Dashed Divider as per image */}
-            <View style={styles.dashedDivider} />
-
-            {/* Cheque #203 */}
-            <View style={styles.chequeRow}>
-              <View style={styles.chequeHeaderRow}>
-                <View style={styles.bulletPoint} />
-                <Text style={styles.chequeTitleText}>
-                  Cheque #203  -  School  -  KES 250  -  <Text style={{ color: '#fe9900' }}>Pending</Text>
-                </Text>
-              </View>
-
-              <View style={styles.chequeDetailsRow}>
-                <Text style={styles.chequeDetailLabel}>Date: <Text style={styles.chequeDetailValue}>Jan 10</Text></Text>
-                <Text style={styles.chequeDetailLabel}>Bank: <Text style={styles.chequeDetailValue}>Bank A</Text></Text>
-              </View>
-
-              <View style={styles.chequeActionsRow}>
-                <TouchableOpacity style={styles.actionBtnOutline}>
-                  <Text style={styles.actionBtnText}>Mark Cleared</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionBtnOutline} onPress={() => router.push('/cheque-details')}>
-                  <Text style={styles.actionBtnText}>View Details</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.itemSeparator} />
-
-            {/* Cheque #204 */}
-            <View style={styles.chequeRow}>
-              <View style={styles.chequeHeaderRow}>
-                <View style={styles.bulletPoint} />
-                <Text style={styles.chequeTitleText}>
-                  Cheque #204  -  Landlord  -  KES 500  -  <Text style={{ color: '#122f8a' }}>Cleared</Text>
-                </Text>
-              </View>
-
-              <View style={styles.chequeDetailsRow}>
-                <Text style={styles.chequeDetailLabel}>Date: <Text style={styles.chequeDetailValue}>Jan 01</Text></Text>
-                <Text style={styles.chequeDetailLabel}>Bank: <Text style={styles.chequeDetailValue}>Bank A</Text></Text>
-              </View>
-
-              <View style={styles.chequeActionsRow}>
-                <TouchableOpacity style={styles.actionBtnOutline} onPress={() => router.push('/receipt')}>
-                  <Text style={styles.actionBtnText}>Receipt</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionBtnOutline} onPress={() => router.push('/cheque-details')}>
-                  <Text style={styles.actionBtnText}>View Details</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.itemSeparator} />
-
-            {/* Cheque #205 */}
-            <View style={styles.chequeRow}>
-              <View style={styles.chequeHeaderRow}>
-                <View style={styles.bulletPoint} />
-                <Text style={styles.chequeTitleText}>
-                  Cheque #205  -  Fuel St.  -  KES 90  -  <Text style={{ color: '#10b981' }}>Deposited</Text>
-                </Text>
-              </View>
-
-              <View style={styles.chequeDetailsRow}>
-                <Text style={styles.chequeDetailLabel}>Date: <Text style={styles.chequeDetailValue}>Jan 14</Text></Text>
-                <Text style={styles.chequeDetailLabel}>Bank: <Text style={styles.chequeDetailValue}>Wallet</Text></Text>
-              </View>
-
-              <View style={styles.chequeActionsRow}>
-                <TouchableOpacity style={styles.actionBtnOutline}>
-                  <Text style={styles.actionBtnText}>View Deposit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionBtnOutline} onPress={() => router.push('/cheque-details')}>
-                  <Text style={styles.actionBtnText}>View Details</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-          </View>
-        </View>
-
-        {/* Bottom Spacing */}
         <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
@@ -216,272 +199,233 @@ export default function ChequesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f4f8',
+    backgroundColor: '#f8fafc',
+  },
+  headerContainer: {
+    marginBottom: 20,
+    backgroundColor: 'transparent',
+    zIndex: 10,
   },
   header: {
-    backgroundColor: '#122f8a',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 5,
+    paddingTop: Platform.OS === 'android' ? 50 : 50,
+    paddingBottom: 50,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
   },
-  headerContent: {
+  headerTop: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
+    marginBottom: 24,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#ffffff',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  statCard: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 4,
+    textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  verticalDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  searchContainerWrapper: {
+    marginHorizontal: 20,
+    marginTop: -25,
+    zIndex: 20,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    shadowColor: '#64748b',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#1e293b',
+    marginLeft: 10,
   },
   content: {
     flex: 1,
+    marginTop: 10,
   },
-  summarySection: {
+  quickActionRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    gap: 10,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginTop: 10,
+    gap: 12,
   },
-  summaryCard: {
+  quickActionBtn: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
-    padding: 12,
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#ffffff',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    borderColor: '#e2e8f0',
+    justifyContent: 'center',
   },
-  summaryNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginTop: 6,
+  quickActionIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
   },
-  summaryLabel: {
-    fontSize: 11,
-    color: '#6b7280',
-    marginTop: 4,
+  quickActionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
   },
-  section: {
-    paddingHorizontal: 16,
-    marginTop: 24,
+  listContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#122f8a',
-    marginBottom: 12,
-    letterSpacing: 0.5,
+    color: '#334155',
+    marginBottom: 16,
   },
-  statusCard: {
+  chequeCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 10,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 12,
-  },
-  statusLabel: {
-    flex: 1,
-    fontSize: 14,
-    color: '#1f2937',
-    fontWeight: '500',
-  },
-  statusValue: {
-    fontSize: 13,
-    color: '#6b7280',
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    shadowColor: '#000',
+    shadowColor: '#64748b',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
-  menuIconContainer: {
+  cardTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconContainer: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  menuContent: {
+  cardMainInfo: {
     flex: 1,
   },
-  menuTitle: {
+  payeeName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 4,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 2,
   },
-  menuDescription: {
-    fontSize: 13,
-    color: '#6b7280',
+  chequeNumber: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '500',
   },
-  chequeCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+  amountText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#122f8a',
   },
-  chequeItem: {
+  cardDivider: {
+    height: 1,
+    backgroundColor: '#f1f5f9',
+    marginVertical: 12,
+  },
+  cardBottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  chequeLeft: {
-    flex: 1,
-  },
-  chequeName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  chequeDate: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  chequeRight: {
-    alignItems: 'flex-end',
-  },
-  chequeAmount: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#122f8a',
-    marginBottom: 6,
+    alignItems: 'center',
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  chequeListCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  dashedDivider: {
-    height: 1,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderStyle: 'dashed',
-    marginBottom: 20,
-    marginTop: 10,
-  },
-  chequeRow: {
-    marginBottom: 4,
-  },
-  chequeHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
   },
-  bulletPoint: {
+  statusDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#475569',
-    marginRight: 10,
-    marginTop: 2,
+    marginRight: 6,
   },
-  chequeTitleText: {
-    fontSize: 14,
-    color: '#334155',
-    fontWeight: '600',
-    flex: 1,
-    lineHeight: 20,
-  },
-  chequeDetailsRow: {
-    flexDirection: 'row',
-    marginLeft: 16,
-    marginBottom: 12,
-    gap: 30,
-  },
-  chequeDetailLabel: {
-    fontSize: 13,
-    color: '#64748b',
-    fontWeight: '400',
-  },
-  chequeDetailValue: {
-    color: '#1e293b',
-    fontWeight: '500',
-  },
-  chequeActionsRow: {
-    flexDirection: 'row',
-    marginLeft: 16,
-    gap: 12,
-  },
-  actionBtnOutline: {
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: '#f8fafc',
-  },
-  actionBtnText: {
+  statusText: {
     fontSize: 12,
-    color: '#475569',
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  itemSeparator: {
-    height: 24,
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  dateText: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#64748b',
+    marginTop: 12,
+  },
+  emptySubtext: {
+    fontSize: 13,
+    color: '#9ca3af',
+    marginTop: 4,
   },
 });
