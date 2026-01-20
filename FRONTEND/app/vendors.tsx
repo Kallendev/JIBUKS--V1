@@ -21,7 +21,7 @@ export default function VendorsScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [showModal, setShowModal] = useState(false);
+    // const [showModal, setShowModal] = useState(false); // Removed
 
     // New vendor form
     const [formData, setFormData] = useState({
@@ -56,30 +56,7 @@ export default function VendorsScreen() {
         setRefreshing(false);
     };
 
-    const handleCreateVendor = async () => {
-        if (!formData.name) {
-            Alert.alert('Error', 'Vendor name is required');
-            return;
-        }
-
-        try {
-            await apiService.createVendor(formData);
-            Alert.alert('Success', 'Vendor created successfully');
-            setShowModal(false);
-            setFormData({
-                name: '',
-                email: '',
-                phone: '',
-                address: '',
-                city: '',
-                paymentTerms: 'Net 30',
-            });
-            loadVendors();
-        } catch (error) {
-            console.error('Error creating vendor:', error);
-            Alert.alert('Error', 'Failed to create vendor');
-        }
-    };
+    // handleCreateVendor removed as it's now handled by add-supplier.tsx
 
     const formatCurrency = (amount: number) => {
         return `KES ${Number(amount).toLocaleString()}`;
@@ -101,7 +78,7 @@ export default function VendorsScreen() {
                     <View style={{ width: 40 }} />
                 </View>
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#f59e0b" />
+                    <ActivityIndicator size="large" color="#fe9900" />
                     <Text style={styles.loadingText}>Loading vendors...</Text>
                 </View>
             </SafeAreaView>
@@ -116,7 +93,7 @@ export default function VendorsScreen() {
                     <Ionicons name="arrow-back" size={24} color="#1f2937" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Vendors</Text>
-                <TouchableOpacity onPress={() => setShowModal(true)} style={styles.addButton}>
+                <TouchableOpacity onPress={() => router.push('/add-supplier')} style={styles.addButton}>
                     <Ionicons name="add" size={24} color="#fff" />
                 </TouchableOpacity>
             </View>
@@ -227,92 +204,7 @@ export default function VendorsScreen() {
                 <View style={{ height: 100 }} />
             </ScrollView>
 
-            {/* Create Vendor Modal */}
-            {showModal && (
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>New Vendor</Text>
-                            <TouchableOpacity onPress={() => setShowModal(false)}>
-                                <Ionicons name="close" size={24} color="#1f2937" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                            <Text style={styles.label}>Vendor Name *</Text>
-                            <TextInput
-                                style={styles.modalInput}
-                                placeholder="Enter vendor name"
-                                value={formData.name}
-                                onChangeText={(value) => setFormData({ ...formData, name: value })}
-                            />
-
-                            <Text style={styles.label}>Email</Text>
-                            <TextInput
-                                style={styles.modalInput}
-                                placeholder="vendor@example.com"
-                                value={formData.email}
-                                onChangeText={(value) => setFormData({ ...formData, email: value })}
-                                keyboardType="email-address"
-                            />
-
-                            <Text style={styles.label}>Phone</Text>
-                            <TextInput
-                                style={styles.modalInput}
-                                placeholder="+254 700 000 000"
-                                value={formData.phone}
-                                onChangeText={(value) => setFormData({ ...formData, phone: value })}
-                                keyboardType="phone-pad"
-                            />
-
-                            <Text style={styles.label}>Address</Text>
-                            <TextInput
-                                style={styles.modalInput}
-                                placeholder="Street address"
-                                value={formData.address}
-                                onChangeText={(value) => setFormData({ ...formData, address: value })}
-                            />
-
-                            <Text style={styles.label}>City</Text>
-                            <TextInput
-                                style={styles.modalInput}
-                                placeholder="City"
-                                value={formData.city}
-                                onChangeText={(value) => setFormData({ ...formData, city: value })}
-                            />
-
-                            <Text style={styles.label}>Payment Terms</Text>
-                            <View style={styles.pickerContainer}>
-                                <select
-                                    value={formData.paymentTerms}
-                                    onChange={(e) => setFormData({ ...formData, paymentTerms: e.target.value })}
-                                    style={styles.picker}
-                                >
-                                    <option value="Due on Receipt">Due on Receipt</option>
-                                    <option value="Net 15">Net 15</option>
-                                    <option value="Net 30">Net 30</option>
-                                    <option value="Net 60">Net 60</option>
-                                </select>
-                            </View>
-                        </ScrollView>
-
-                        <View style={styles.modalFooter}>
-                            <TouchableOpacity
-                                style={styles.cancelButton}
-                                onPress={() => setShowModal(false)}
-                            >
-                                <Text style={styles.cancelButtonText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.createButton}
-                                onPress={handleCreateVendor}
-                            >
-                                <Text style={styles.createButtonText}>Create Vendor</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            )}
+            {/* Modal removed */}
         </SafeAreaView>
     );
 }
@@ -343,13 +235,13 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#1f2937',
+        color: '#122f8a',
     },
     addButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#f59e0b',
+        backgroundColor: '#fe9900',
         alignItems: 'center',
         justifyContent: 'center',
     },

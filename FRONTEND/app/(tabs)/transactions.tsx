@@ -75,22 +75,22 @@ export default function ChequesScreen() {
           <Text style={styles.sectionTitle}>CHEQUE STATUS</Text>
           <View style={styles.statusCard}>
             <View style={styles.statusRow}>
-              <View style={styles.statusDot} style={{ backgroundColor: '#f59e0b' }} />
+              <View style={[styles.statusDot, { backgroundColor: '#f59e0b' }]} />
               <Text style={styles.statusLabel}>Pending</Text>
               <Text style={styles.statusValue}>2 cheques</Text>
             </View>
             <View style={styles.statusRow}>
-              <View style={styles.statusDot} style={{ backgroundColor: '#10b981' }} />
+              <View style={[styles.statusDot, { backgroundColor: '#10b981' }]} />
               <Text style={styles.statusLabel}>Cleared</Text>
               <Text style={styles.statusValue}>5 cheques</Text>
             </View>
             <View style={styles.statusRow}>
-              <View style={styles.statusDot} style={{ backgroundColor: '#2563eb' }} />
+              <View style={[styles.statusDot, { backgroundColor: '#2563eb' }]} />
               <Text style={styles.statusLabel}>Deposited</Text>
               <Text style={styles.statusValue}>1 cheque</Text>
             </View>
             <View style={styles.statusRow}>
-              <View style={styles.statusDot} style={{ backgroundColor: '#ef4444' }} />
+              <View style={[styles.statusDot, { backgroundColor: '#ef4444' }]} />
               <Text style={styles.statusLabel}>Returned</Text>
               <Text style={styles.statusValue}>0 cheques</Text>
             </View>

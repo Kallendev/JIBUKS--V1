@@ -101,7 +101,7 @@ export default function SuppliersScreen() {
         <View style={styles.section}>
           <TouchableOpacity
             style={styles.addButton}
-            onPress={() => router.push('/vendors' as any)}
+            onPress={() => router.push('/add-supplier' as any)}
           >
             <Ionicons name="add-circle" size={22} color="#ffffff" />
             <Text style={styles.addButtonText}>Add New Supplier</Text>

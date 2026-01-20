@@ -150,7 +150,7 @@ export const FAMILY_COA_TEMPLATE = [
  * This allows transactions to be recorded with user-friendly category names
  * while automatically posting to the correct accounting accounts
  */
-const CATEGORY_ACCOUNT_MAP = {
+export const CATEGORY_ACCOUNT_MAP = {
     // Income Categories
     'Salary': { incomeAccount: '4000', defaultAssetAccount: '1010' },
     'Business': { incomeAccount: '4010', defaultAssetAccount: '1010' },
@@ -960,7 +960,6 @@ export async function getBalanceSheet(tenantId, asOfDate = new Date()) {
 }
 
 // Named exports for constants
-export { FAMILY_COA_TEMPLATE, FAMILY_CATEGORIES_TEMPLATE, FAMILY_PAYMENT_METHODS_TEMPLATE, CATEGORY_ACCOUNT_MAP };
 
 export default {
     seedFamilyCoA,
@@ -976,8 +975,4 @@ export default {
     getProfitAndLoss,
     getCashFlow,
     getBalanceSheet,
-    FAMILY_COA_TEMPLATE,
-    FAMILY_CATEGORIES_TEMPLATE,
-    FAMILY_PAYMENT_METHODS_TEMPLATE,
-    CATEGORY_ACCOUNT_MAP,
 };
