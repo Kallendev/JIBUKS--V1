@@ -17,6 +17,7 @@ export default function RecordsScreen() {
     {
       title: 'FINANCIAL STATEMENTS',
       items: [
+        { id: 0, name: 'Chart of Accounts', icon: 'list', route: '/accounts', color: '#4b5563' },
         { id: 1, name: 'Income Statement', icon: 'trending-up', route: '/reports/profit-loss', color: '#10b981' },
         { id: 2, name: 'Balance Sheet', icon: 'analytics', route: '/reports', color: '#2563eb' },
         { id: 3, name: 'Cash Flow', icon: 'water', route: '/reports', color: '#06b6d4' },
