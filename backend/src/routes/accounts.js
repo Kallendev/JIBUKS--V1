@@ -37,7 +37,10 @@ router.get('/', async (req, res) => {
     try {
         const { tenantId } = req.user;
 
+        console.log('📊 GET /api/accounts - Request from tenant:', tenantId);
+
         if (!tenantId) {
+            console.error('❌ No tenantId in request');
             return res.status(400).json({ error: 'User is not part of any family' });
         }
 
@@ -49,6 +52,8 @@ router.get('/', async (req, res) => {
             ...(type && { type }),
             ...(includeInactive !== 'true' && { isActive: true }),
         };
+
+        console.log('🔍 Querying accounts with:', where);
 
         // Get accounts
         const accounts = await prisma.account.findMany({
@@ -64,9 +69,12 @@ router.get('/', async (req, res) => {
             },
         });
 
+        console.log(`✅ Found ${accounts.length} accounts for tenant ${tenantId}`);
+
         // Calculate balances if requested
         let accountsWithBalances = accounts;
         if (includeBalances === 'true') {
+            console.log('💰 Calculating balances...');
             accountsWithBalances = await Promise.all(
                 accounts.map(async (account) => {
                     const balance = await getAccountBalance(account.id);
@@ -79,6 +87,7 @@ router.get('/', async (req, res) => {
                     };
                 })
             );
+            console.log('✅ Balances calculated');
         } else {
             accountsWithBalances = accounts.map(account => ({
                 ...account,
@@ -88,10 +97,11 @@ router.get('/', async (req, res) => {
             }));
         }
 
+        console.log(`📤 Sending ${accountsWithBalances.length} accounts to frontend`);
         res.json(accountsWithBalances);
     } catch (error) {
-        console.error('Error fetching accounts:', error);
-        res.status(500).json({ error: 'Failed to fetch accounts' });
+        console.error('❌ Error fetching accounts:', error);
+        res.status(500).json({ error: 'Failed to fetch accounts', details: error.message });
     }
 });
 
