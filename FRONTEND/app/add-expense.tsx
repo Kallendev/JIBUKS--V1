@@ -97,6 +97,14 @@ export default function SpendMoneyScreen() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [meterNumber, setMeterNumber] = useState('');
 
+  // Payment Method (for Cheque support)
+  const [paymentMethod, setPaymentMethod] = useState('Cash/M-PESA');
+  const [chequeNumber, setChequeNumber] = useState('');
+  const [chequeDate, setChequeDate] = useState(new Date());
+  const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false);
+  const [showChequeDateModal, setShowChequeDateModal] = useState(false);
+
+
   // Zone 3: Split Mode
   const [splitMode, setSplitMode] = useState(false);
   const [splitLines, setSplitLines] = useState<SplitLine[]>([
@@ -262,6 +270,11 @@ export default function SpendMoneyScreen() {
         Alert.alert('Required', 'Enter M-PESA code');
         return;
       }
+      // Cheque validation
+      if (paymentMethod === 'Cheque' && !chequeNumber.trim()) {
+        Alert.alert('Required', 'Enter cheque number');
+        return;
+      }
     } else {
       // Split mode validation
       const invalidLine = splitLines.find(l => !l.category || !l.amount || parseFloat(l.amount) <= 0);
@@ -273,6 +286,28 @@ export default function SpendMoneyScreen() {
 
     try {
       setSaving(true);
+
+      // If Payment Method is Cheque, Create Cheque Record First
+      if (paymentMethod === 'Cheque') {
+        const currentUser = await apiService.getCurrentUser();
+        if (currentUser.tenantId) {
+          const accountInfo = accounts.find(a => a.id === account.id);
+          const accountNumber = accountInfo?.code?.slice(-4) || '****';
+
+          await apiService.createCheque({
+            tenantId: currentUser.tenantId,
+            chequeNumber: chequeNumber,
+            payee: payee || 'Multiple Items',
+            amount: splitMode ? getSplitTotal() : parseFloat(amount),
+            dueDate: chequeDate.toISOString(),
+            bankAccountId: typeof account.id === 'string' ? parseInt(account.id) : account.id,
+            accountNumber: accountNumber,
+            purpose: description || (splitMode ? 'Split Expense' : (category?.name || 'Expense')),
+            notes: `Expense transaction via cheque. Ref: ${reference}`,
+            reference: reference || chequeNumber,
+          });
+        }
+      }
 
       if (!splitMode) {
         // Simple transaction
@@ -286,10 +321,14 @@ export default function SpendMoneyScreen() {
           category: category!.name,
           description: description.trim() || `${category!.name} - ${payee}`,
           payee: payee.trim(),
-          paymentMethod: account.name,
+          paymentMethod: paymentMethod,
           date: date.toISOString(),
           notes: [
             reference.trim(),
+            `Payment: ${paymentMethod}`,
+            paymentMethod === 'Cheque' ? `Cheque #${chequeNumber}` : '',
+            paymentMethod === 'Cheque' ? `Cheque Date: ${chequeDate.toLocaleDateString()}` : '',
+            paymentMethod === 'Cheque' ? 'Status: Pending' : '',
             phoneNumber ? `Phone: ${phoneNumber}` : '',
             meterNumber ? `Meter: ${meterNumber}` : '',
             member ? `For: ${member.name}` : '',
@@ -449,6 +488,63 @@ export default function SpendMoneyScreen() {
               </View>
             </View>
           </View>
+
+          {/* Payment Method Row */}
+          <View style={styles.field}>
+            <Text style={styles.label}>PAYMENT METHOD</Text>
+            <TouchableOpacity
+              style={styles.selector}
+              onPress={() => setShowPaymentMethodModal(true)}
+            >
+              <Ionicons
+                name={
+                  paymentMethod === 'Cheque' ? 'document-text-outline' :
+                    paymentMethod.includes('M-PESA') ? 'phone-portrait-outline' :
+                      paymentMethod === 'Bank Transfer' ? 'card-outline' : 'cash-outline'
+                }
+                size={24}
+                color={COLORS.textLight}
+              />
+              <Text style={styles.selectorText}>{paymentMethod}</Text>
+              <Ionicons name="chevron-down" size={20} color={COLORS.textLight} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Conditional Cheque Fields */}
+          {paymentMethod === 'Cheque' && (
+            <View style={styles.card}>
+              <Text style={[styles.zoneLabel, { marginBottom: 10 }]}>CHEQUE DETAILS</Text>
+              <View style={styles.row}>
+                <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
+                  <Text style={styles.label}>CHEQUE NUMBER *</Text>
+                  <View style={styles.input}>
+                    <Ionicons name="document-text-outline" size={20} color={COLORS.textLight} />
+                    <TextInput
+                      style={styles.inputText}
+                      placeholder="000123"
+                      value={chequeNumber}
+                      onChangeText={setChequeNumber}
+                      placeholderTextColor={COLORS.textLight}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+                <View style={[styles.field, { flex: 1, marginLeft: 8 }]}>
+                  <Text style={styles.label}>CHEQUE DATE (POST-DATED)</Text>
+                  <TouchableOpacity
+                    style={styles.input}
+                    onPress={() => setShowChequeDateModal(true)}
+                  >
+                    <Ionicons name="calendar-outline" size={20} color={COLORS.textLight} />
+                    <Text style={styles.dateText}>
+                      {chequeDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <Text style={styles.hintText}>💡 Cheques will typically be cleared later.</Text>
+            </View>
+          )}
 
           {/* Zone 3: Split Toggle */}
           <View style={styles.splitToggle}>
@@ -705,6 +801,55 @@ export default function SpendMoneyScreen() {
             </View>
           )}
 
+          {/* Payment Method */}
+          <View style={styles.field}>
+            <Text style={styles.label}>PAYMENT METHOD</Text>
+            <TouchableOpacity
+              style={styles.selector}
+              onPress={() => setShowPaymentMethodModal(true)}
+            >
+              <Ionicons
+                name={paymentMethod === 'Cheque' ? 'card-outline' : 'cash-outline'}
+                size={24}
+                color={COLORS.textLight}
+              />
+              <Text style={styles.selectorText}>{paymentMethod}</Text>
+              <Ionicons name="chevron-down" size={20} color={COLORS.textLight} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Cheque Fields (shown only when Cheque is selected) */}
+          {paymentMethod === 'Cheque' && (
+            <>
+              <View style={styles.field}>
+                <Text style={styles.label}>CHEQUE NUMBER *</Text>
+                <View style={styles.input}>
+                  <Ionicons name="card-outline" size={20} color={COLORS.textLight} />
+                  <TextInput
+                    style={styles.inputText}
+                    placeholder="e.g., 001234"
+                    value={chequeNumber}
+                    onChangeText={setChequeNumber}
+                    placeholderTextColor={COLORS.textLight}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>CHEQUE DATE (Post-Dated)</Text>
+                <View style={styles.input}>
+                  <Ionicons name="calendar" size={18} color={COLORS.textLight} />
+                  <Text style={styles.dateText}>
+                    {chequeDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </Text>
+                </View>
+                <Text style={styles.helperText}>
+                  💡 Post-dated cheques won't deduct from your balance until cleared
+                </Text>
+              </View>
+            </>
+          )}
+
           {/* Tax Toggle */}
           <TouchableOpacity
             style={styles.taxToggle}
@@ -929,6 +1074,58 @@ export default function SpendMoneyScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Payment Method Modal */}
+      <Modal visible={showPaymentMethodModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Payment Method</Text>
+              <TouchableOpacity onPress={() => setShowPaymentMethodModal(false)}>
+                <Ionicons name="close" size={28} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalScroll}>
+              {['Cash/M-PESA', 'Bank Transfer', 'Cheque'].map((method) => (
+                <TouchableOpacity
+                  key={method}
+                  style={[
+                    styles.modalItem,
+                    paymentMethod === method && styles.modalItemActive
+                  ]}
+                  onPress={() => {
+                    setPaymentMethod(method);
+                    setShowPaymentMethodModal(false);
+                  }}
+                >
+                  <Ionicons
+                    name={
+                      method === 'Cheque' ? 'card-outline' :
+                        method === 'Bank Transfer' ? 'business-outline' :
+                          'cash-outline'
+                    }
+                    size={24}
+                    color={COLORS.primary}
+                  />
+                  <Text style={styles.modalItemText}>{method}</Text>
+                  {paymentMethod === method && (
+                    <Ionicons name="checkmark-circle" size={24} color={COLORS.success} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Cheque Date Picker */}
+      <CustomDatePicker
+        visible={showChequeDateModal}
+        onClose={() => setShowChequeDateModal(false)}
+        date={chequeDate}
+        onChange={setChequeDate}
+      />
     </View>
   );
 }
@@ -1466,4 +1663,60 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.primary,
   },
+  helperText: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  card: {
+    backgroundColor: COLORS.white,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: 20,
+  },
+  hintText: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
 });
+
+// Simple JS Date Picker Component
+const CustomDatePicker = ({ visible, onClose, date, onChange }: any) => {
+  const [tempDate, setTempDate] = useState(date || new Date());
+  const daysInMonth = new Date(tempDate.getFullYear(), tempDate.getMonth() + 1, 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modal, { maxHeight: 'auto', paddingBottom: 20 }]}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Select Date</Text>
+            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={24} color={COLORS.text} /></TouchableOpacity>
+          </View>
+          <View style={{ padding: 20 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 15 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.text }}>{months[tempDate.getMonth()]} {tempDate.getFullYear()}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+              {days.map(day => (
+                <TouchableOpacity key={day} style={{ width: 36, height: 36, justifyContent: 'center', alignItems: 'center', borderRadius: 18, backgroundColor: tempDate.getDate() === day ? COLORS.primary : COLORS.background }} onPress={() => { const newDate = new Date(tempDate); newDate.setDate(day); setTempDate(newDate); }}>
+                  <Text style={{ color: tempDate.getDate() === day ? '#fff' : COLORS.text, fontSize: 13 }}>{day}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity style={{ backgroundColor: COLORS.primary, marginTop: 20, padding: 12, borderRadius: 8, alignItems: 'center' }} onPress={() => { onChange(tempDate); onClose(); }}>
+              <Text style={{ color: '#fff', fontWeight: 'bold' }}>Confirm Date</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
