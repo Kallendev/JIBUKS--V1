@@ -6,7 +6,7 @@ interface AccountsContextValue {
   defaultAccount: Account | null;
   loading: boolean;
   error: string | null;
-  refresh: () => Promise<void>;
+  refreshAccounts: () => Promise<void>;
 }
 
 const AccountsContext = createContext<AccountsContextValue | undefined>(undefined);
@@ -63,7 +63,7 @@ export const AccountsProvider = ({ children }: { children: ReactNode }) => {
       defaultAccount: accounts.find(a => a.isDefault) || accounts[0] || null,
       loading,
       error,
-      refresh: loadAccounts,
+      refreshAccounts: loadAccounts,
     }),
     [accounts, loading, error]
   );

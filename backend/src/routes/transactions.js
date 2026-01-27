@@ -327,12 +327,20 @@ router.post('/', async (req, res) => {
 
             // 2. Debit Lines (Splits)
             for (const split of splits) {
-                const mapping = getAccountMapping(split.category, type);
-                const { debitAccountId: splitDebitId } = await resolveAccountIds(
-                    tenantId,
-                    mapping.debitAccountCode,
-                    '1000' // dummy
-                );
+                let splitDebitId;
+
+                // Priority: Explicit Account ID > Category Mapping
+                if (split.accountId) {
+                    splitDebitId = parseInt(split.accountId);
+                } else {
+                    const mapping = getAccountMapping(split.category, type);
+                    const { debitAccountId } = await resolveAccountIds(
+                        tenantId,
+                        mapping.debitAccountCode,
+                        '1000' // dummy
+                    );
+                    splitDebitId = debitAccountId;
+                }
 
                 // If we haven't set a main debit account for the Transaction record, use the first one
                 if (!resolvedDebitAccountId) resolvedDebitAccountId = splitDebitId;
@@ -365,16 +373,37 @@ router.post('/', async (req, res) => {
 
             if (debitAccountId && creditAccountId) {
                 // Frontend provided specific accounts
-                const debitCode = debitAccountId.replace('acct-', '');
-                const creditCode = creditAccountId.replace('acct-', '');
+                // Handle both "acct-123" strings and raw integers
+                let debitIdToFind = debitAccountId;
+                let creditIdToFind = creditAccountId;
 
+                if (typeof debitAccountId === 'string' && debitAccountId.startsWith('acct-')) {
+                    debitIdToFind = parseInt(debitAccountId.replace('acct-', ''));
+                }
+                if (typeof creditAccountId === 'string' && creditAccountId.startsWith('acct-')) {
+                    creditIdToFind = parseInt(creditAccountId.replace('acct-', ''));
+                }
+
+                // If they are fast-tracked integers or parsed strings, check they exist
                 const [debitAccount, creditAccount] = await Promise.all([
-                    prisma.account.findFirst({ where: { tenantId, code: debitCode } }),
-                    prisma.account.findFirst({ where: { tenantId, code: creditCode } }),
+                    prisma.account.findFirst({ where: { tenantId, id: parseInt(debitIdToFind) } }),
+                    prisma.account.findFirst({ where: { tenantId, id: parseInt(creditIdToFind) } }),
                 ]);
 
-                resolvedDebitAccountId = debitAccount?.id;
-                resolvedCreditAccountId = creditAccount?.id;
+                // Fallback: If id lookup failed, try code lookup (legacy behavior)
+                if (!debitAccount && typeof debitAccountId === 'string') {
+                    const d = await prisma.account.findFirst({ where: { tenantId, code: debitAccountId } });
+                    if (d) resolvedDebitAccountId = d.id;
+                } else {
+                    resolvedDebitAccountId = debitAccount?.id;
+                }
+
+                if (!creditAccount && typeof creditAccountId === 'string') {
+                    const c = await prisma.account.findFirst({ where: { tenantId, code: creditAccountId } });
+                    if (c) resolvedCreditAccountId = c.id;
+                } else {
+                    resolvedCreditAccountId = creditAccount?.id;
+                }
 
                 // INTERCEPTION FOR CHEQUES:
                 // If paying by cheque, we crédito "Uncleared Cheques Payable" instead of Bank Account immediately.
@@ -389,19 +418,37 @@ router.post('/', async (req, res) => {
                     }
                 }
             } else {
-                // Use automatic mapping
-                const mapping = getAccountMapping(categoryToUse, type);
-
                 // Logic for legacy behavior...
-                let assetAccountCode = null;
-                if (accountId) assetAccountCode = accountId.replace('acct-', '');
+                let assetAccountIdResolved = null;
 
-                if (assetAccountCode) {
-                    if (type === 'INCOME') mapping.debitAccountCode = assetAccountCode;
-                    else mapping.creditAccountCode = assetAccountCode;
+                if (accountId) {
+                    if (typeof accountId === 'string' && accountId.startsWith('acct-')) {
+                        assetAccountIdResolved = parseInt(accountId.replace('acct-', ''));
+                    } else if (!isNaN(accountId)) {
+                        assetAccountIdResolved = parseInt(accountId);
+                    }
                 }
 
-                if (paymentMethod && !accountId) {
+                if (assetAccountIdResolved) {
+                    // We have a direct ID for the asset account
+                    if (type === 'INCOME') resolvedDebitAccountId = assetAccountIdResolved;
+                    else resolvedCreditAccountId = assetAccountIdResolved;
+
+                    // Now we need the other side
+                    const mapping = getAccountMapping(categoryToUse, type);
+                    if (type === 'INCOME') {
+                        // We need credit account (Revenue)
+                        const { creditAccountId: revId } = await resolveAccountIds(tenantId, '1000', mapping.creditAccountCode);
+                        resolvedCreditAccountId = revId;
+                    } else {
+                        // We need debit account (Expense)
+                        const { debitAccountId: expId } = await resolveAccountIds(tenantId, mapping.debitAccountCode, '1000');
+                        resolvedDebitAccountId = expId;
+                    }
+
+                } else if (paymentMethod && !accountId) {
+                    // Legacy Payment Method Mapping
+                    const mapping = getAccountMapping(categoryToUse, type);
                     const paymentMethodToAccount = {
                         'Cash': '1000',
                         'M-Pesa': '1030',
@@ -415,16 +462,27 @@ router.post('/', async (req, res) => {
                         if (type === 'INCOME') mapping.debitAccountCode = assetCode;
                         else mapping.creditAccountCode = assetCode;
                     }
+
+                    const accountIds = await resolveAccountIds(
+                        tenantId,
+                        mapping.debitAccountCode,
+                        mapping.creditAccountCode
+                    );
+                    resolvedDebitAccountId = accountIds.debitAccountId;
+                    resolvedCreditAccountId = accountIds.creditAccountId;
+                } else {
+                    // Pure Category Mapping
+                    const mapping = getAccountMapping(categoryToUse, type);
+                    const accountIds = await resolveAccountIds(
+                        tenantId,
+                        mapping.debitAccountCode,
+                        mapping.creditAccountCode
+                    );
+                    resolvedDebitAccountId = accountIds.debitAccountId;
+                    resolvedCreditAccountId = accountIds.creditAccountId;
                 }
 
-                const accountIds = await resolveAccountIds(
-                    tenantId,
-                    mapping.debitAccountCode,
-                    mapping.creditAccountCode
-                );
-
-                resolvedDebitAccountId = accountIds.debitAccountId;
-                resolvedCreditAccountId = accountIds.creditAccountId;
+                // Resolution complete
             }
 
             if (!resolvedDebitAccountId || !resolvedCreditAccountId) {

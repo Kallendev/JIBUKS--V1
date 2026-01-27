@@ -123,7 +123,7 @@ export interface Transaction {
   accountId?: string;
   notes?: string;
   payee?: string;
-  splits?: { category: string; amount: number; description?: string }[];
+  splits?: { category: string; amount: number; description?: string; accountId?: string }[];
 }
 
 export interface TransactionStats {
@@ -550,9 +550,12 @@ class ApiService {
   }
 
   // Accounts (Chart of Accounts)
-  async getAccounts(params?: { type?: string }): Promise<any[]> {
-    const query = params?.type ? `?type=${params.type}` : '';
-    return this.request(`/accounts${query}`);
+  async getAccounts(params?: { type?: string; includeBalances?: boolean }): Promise<any[]> {
+    const query = new URLSearchParams();
+    if (params?.type) query.append('type', params.type);
+    if (params?.includeBalances) query.append('includeBalances', 'true');
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return this.request(`/accounts${suffix}`);
   }
 
   // Customers
@@ -615,7 +618,7 @@ class ApiService {
     debitAccountId?: number;
     creditAccountId?: number;
     payee?: string;
-    splits?: { category: string; amount: number; description?: string }[];
+    splits?: { category: string; amount: number; description?: string; accountId?: string }[];
   }): Promise<Transaction> {
     return this.request('/transactions', {
       method: 'POST',
