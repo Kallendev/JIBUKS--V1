@@ -929,6 +929,92 @@ class ApiService {
     return this.request<any>(`/reports/category-analysis${suffix}`);
   }
 
+  // ============================================
+  // CHEQUE MANAGEMENT - Revolutionary Feature
+  // ============================================
+
+  /**
+   * Get all pending cheques
+   */
+  async getPendingCheques(tenantId: number): Promise<any[]> {
+    return this.request(`/cheques/pending?tenantId=${tenantId}`);
+  }
+
+  /**
+   * Get all cheques (pending, cleared, voided)
+   */
+  async getAllCheques(tenantId: number): Promise<any[]> {
+    return this.request(`/cheques/all?tenantId=${tenantId}`);
+  }
+
+  /**
+   * Get cheque summary for dashboard widget
+   * Returns: { count, totalAmount, bankBalance, realAvailable }
+   */
+  async getChequeSummary(tenantId: number): Promise<{
+    count: number;
+    totalAmount: number;
+    bankBalance: number;
+    realAvailable: number;
+  }> {
+    return this.request(`/cheques/summary?tenantId=${tenantId}`);
+  }
+
+  /**
+   * Create a new cheque
+   */
+  async createCheque(data: {
+    tenantId: number;
+    chequeNumber: string;
+    payee: string;
+    amount: number;
+    dueDate: string;
+    bankAccountId: number;
+    accountNumber?: string;
+    purpose: string;
+    notes?: string;
+    reference?: string;
+  }): Promise<any> {
+    return this.request('/cheques/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Mark a cheque as cleared
+   */
+  async clearCheque(
+    chequeId: number,
+    data: {
+      dateCleared: string;
+      clearedById?: number;
+      tenantId: number;
+    }
+  ): Promise<any> {
+    return this.request(`/cheques/${chequeId}/clear`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Void a cheque
+   */
+  async voidCheque(chequeId: number, reason?: string): Promise<any> {
+    return this.request(`/cheques/${chequeId}/void`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  /**
+   * Get a single cheque by ID
+   */
+  async getCheque(chequeId: number): Promise<any> {
+    return this.request(`/cheques/${chequeId}`);
+  }
+
   getImageUrl(path: string | null | undefined): string | undefined {
     if (!path) return undefined;
     if (path.startsWith('http')) return path;

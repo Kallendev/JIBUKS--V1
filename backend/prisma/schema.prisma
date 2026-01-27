@@ -44,6 +44,7 @@ model Tenant {
   expenseCategories     ExpenseCategory[]
   vendorTags            VendorTag[]
   paymentAccounts       PaymentAccount[]
+  cheques               Cheque[]
 
   @@map("tenants")
 }
@@ -831,5 +832,52 @@ enum InvoiceStatus {
   PAID
   CANCELLED
   OVERDUE
+}
+
+// ============================================
+// CHEQUE MANAGEMENT - Revolutionary Feature
+// ============================================
+
+model Cheque {
+  id              Int           @id @default(autoincrement())
+  tenantId        Int           @map("tenant_id")
+  chequeNumber    String        @map("cheque_number")
+  payee           String
+  amount          Decimal
+  dueDate         DateTime      @map("due_date") // Post-dated cheque date
+  bankAccountId   Int           @map("bank_account_id") // Which bank account
+  accountNumber   String?       @map("account_number") // Last 4 digits for display
+  purpose         String        // School Fees, Rent, etc.
+  status          ChequeStatus  @default(PENDING)
+  
+  // Clearance tracking
+  dateCleared     DateTime?     @map("date_cleared")
+  clearedById     Int?          @map("cleared_by_id")
+  
+  // Accounting integration
+  writeJournalId  Int?          @map("write_journal_id") // Journal when cheque written
+  clearJournalId  Int?          @map("clear_journal_id") // Journal when cleared
+  
+  // Additional metadata
+  notes           String?
+  reference       String?       // Transaction reference
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  
+  // Relations
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@index([tenantId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([bankAccountId])
+  @@map("cheques")
+}
+
+enum ChequeStatus {
+  PENDING   // Written but not cleared
+  CLEARED   // Cleared by bank
+  BOUNCED   // Returned/bounced
+  VOIDED    // Cancelled/voided
 }
 

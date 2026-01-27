@@ -303,12 +303,23 @@ router.post('/', async (req, res) => {
             const { creditAccountId: creditId } = await resolveAccountIds(tenantId, '1000', creditAccountCode);
             resolvedCreditAccountId = creditId; // Use this for the main transaction record
 
+            // INTERCEPTION FOR CHEQUES (Split Mode):
+            if (paymentMethod === 'Cheque' && type === 'EXPENSE') {
+                const unclearedAccount = await prisma.account.findFirst({
+                    where: { tenantId, systemTag: 'UNCLEARED_CHEQUES' }
+                });
+                if (unclearedAccount) {
+                    resolvedCreditAccountId = unclearedAccount.id;
+                    console.log(`[Transactions] Intercepted CHEQUE payment (Split). Swapped Bank Account via ID ${creditId} for Uncleared Cheques (ID: ${unclearedAccount.id})`);
+                }
+            }
+
             // Construct Journal Lines
             const lines = [];
 
             // 1. Credit Line (Total Payment)
             lines.push({
-                accountId: creditId,
+                accountId: resolvedCreditAccountId,
                 debit: 0,
                 credit: parsedAmount,
                 description: `Payment to ${payee || 'Multiple'}`,
@@ -364,6 +375,19 @@ router.post('/', async (req, res) => {
 
                 resolvedDebitAccountId = debitAccount?.id;
                 resolvedCreditAccountId = creditAccount?.id;
+
+                // INTERCEPTION FOR CHEQUES:
+                // If paying by cheque, we crédito "Uncleared Cheques Payable" instead of Bank Account immediately.
+                if (paymentMethod === 'Cheque' && type === 'EXPENSE') {
+                    const unclearedAccount = await prisma.account.findFirst({
+                        where: { tenantId, systemTag: 'UNCLEARED_CHEQUES' }
+                    });
+                    if (unclearedAccount) {
+                        // Overwrite credit account to utilize the liability account
+                        resolvedCreditAccountId = unclearedAccount.id;
+                        console.log(`[Transactions] Intercepted CHEQUE payment. Swapped Bank Account for Uncleared Cheques (ID: ${unclearedAccount.id})`);
+                    }
+                }
             } else {
                 // Use automatic mapping
                 const mapping = getAccountMapping(categoryToUse, type);

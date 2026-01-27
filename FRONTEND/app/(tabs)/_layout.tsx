@@ -67,6 +67,7 @@ export default function TabLayout() {
         name="transactions"
         options={{
           title: 'Cheques',
+          href: null, // Hidden from tab bar
           tabBarIcon: ({ color, focused }) => (
             <View style={styles.iconContainer}>
               <Ionicons name={focused ? 'wallet' : 'wallet-outline'} size={20} color={color} />

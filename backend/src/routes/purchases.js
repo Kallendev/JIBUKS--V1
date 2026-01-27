@@ -661,11 +661,24 @@ router.post('/:id/payment', async (req, res) => {
                 }
             });
 
-            // Credit: Bank Account
+            // Determine Credit Account (Bank or Uncleared Cheques)
+            let creditAccountId = parseInt(bankAccountId);
+
+            if (paymentMethod === 'Cheque') {
+                const unclearedAccount = await tx.account.findFirst({
+                    where: { tenantId, systemTag: 'UNCLEARED_CHEQUES' }
+                });
+                if (unclearedAccount) {
+                    creditAccountId = unclearedAccount.id;
+                    console.log(`[Purchases] Intercepted CHEQUE payment. Swapped Bank Account ID ${bankAccountId} for Uncleared Cheques ID ${unclearedAccount.id}`);
+                }
+            }
+
+            // Credit: Bank Account (or Uncleared Cheques)
             await tx.journalLine.create({
                 data: {
                     journalId: journal.id,
-                    accountId: parseInt(bankAccountId),
+                    accountId: creditAccountId,
                     debit: 0,
                     credit: amount,
                     description: `Payment - ${purchase.billNumber || `Purchase #${purchase.id}`}`

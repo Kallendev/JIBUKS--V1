@@ -23,7 +23,9 @@ import bankRoutes from './routes/bank.js';
 import fixedAssetsRoutes from './routes/fixed-assets.js';
 import customersRoutes from './routes/customers.js';
 import invoicesRoutes from './routes/invoices.js';
+import chequesRoutes from './routes/cheques.js';
 
+// Registered routes
 const app = express();
 
 // Get configuration from environment
@@ -114,6 +116,7 @@ app.use('/api/bank', bankRoutes);
 app.use('/api/fixed-assets', fixedAssetsRoutes);
 app.use('/api/customers', customersRoutes);
 app.use('/api/invoices', invoicesRoutes);
+app.use('/api/cheques', chequesRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

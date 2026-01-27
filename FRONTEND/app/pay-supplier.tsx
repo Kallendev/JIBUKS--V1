@@ -33,6 +33,15 @@ export default function PaySupplierScreen() {
     // Modals
     const [showAccountModal, setShowAccountModal] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false);
+    const [showChequeDatePicker, setShowChequeDatePicker] = useState(false);
+
+    // Payment Method & Cheque Support
+    const [paymentMethod, setPaymentMethod] = useState('Bank Transfer');
+    const [chequeNumber, setChequeNumber] = useState('');
+    const [chequeDate, setChequeDate] = useState(new Date());
+
+    const paymentMethods = ['Cash', 'Bank Transfer', 'M-PESA', 'Cheque'];
 
     useEffect(() => {
         loadData();
@@ -112,11 +121,40 @@ export default function PaySupplierScreen() {
             return;
         }
 
+        // Validate cheque fields if payment method is Cheque
+        if (paymentMethod === 'Cheque') {
+            if (!chequeNumber.trim()) {
+                Alert.alert('Required', 'Please enter the cheque number.');
+                return;
+            }
+        }
+
         setLoading(true);
         try {
+            const selectedBills = bills.filter(b => selectedBillIds.has(b.id));
+            const firstBill = selectedBills[0];
+
+            // If payment method is Cheque, create cheque record first
+            if (paymentMethod === 'Cheque') {
+                const accountInfo = paymentAccounts.find(a => String(a.id) === safeAccountId);
+                const accountNumber = accountInfo?.code?.slice(-4) || '****';
+
+                await apiService.createCheque({
+                    tenantId: (await apiService.getCurrentUser()).tenantId!,
+                    chequeNumber: chequeNumber,
+                    payee: supplierName as string,
+                    amount: parseFloat(totalAmountPaid),
+                    dueDate: chequeDate.toISOString(),
+                    bankAccountId: bankAccountIdNum,
+                    accountNumber: accountNumber,
+                    purpose: `Payment to ${supplierName} - Bill #${firstBill.billNumber || firstBill.id}`,
+                    notes: notes || `Supplier payment via cheque`,
+                    reference: reference || chequeNumber,
+                });
+            }
+
             // Distribute amount logic
             let remainingAmount = parseFloat(totalAmountPaid);
-            const selectedBills = bills.filter(b => selectedBillIds.has(b.id));
 
             console.log('Paying Bills:', selectedBills.map(b => b.id), 'Total:', totalAmountPaid, 'AccID:', bankAccountIdNum);
 
@@ -129,9 +167,9 @@ export default function PaySupplierScreen() {
                 const payload = {
                     amount: amountToPayForThisBill,
                     paymentDate: paymentDate.toISOString(),
-                    paymentMethod: paymentAccounts.find(a => String(a.id) === safeAccountId)?.name || 'Bank Transfer',
+                    paymentMethod: paymentMethod,
                     bankAccountId: bankAccountIdNum,
-                    reference: reference,
+                    reference: paymentMethod === 'Cheque' ? chequeNumber : reference,
                     notes: notes
                 };
 
@@ -142,13 +180,16 @@ export default function PaySupplierScreen() {
                 remainingAmount -= amountToPayForThisBill;
             }
 
-            Alert.alert('Success', 'Payment recorded successfully!', [
-                { text: 'OK', onPress: () => router.back() }
-            ]);
+            Alert.alert('Success',
+                paymentMethod === 'Cheque'
+                    ? `Cheque #${chequeNumber} recorded successfully!`
+                    : 'Payment recorded successfully!',
+                [{ text: 'OK', onPress: () => router.back() }]
+            );
 
         } catch (error: any) {
             console.error('Payment Error:', error);
-            Alert.alert('Error', error.message || 'Failed to record payment');
+            Alert.alert('Error', error.error || error.message || 'Failed to record payment');
         } finally {
             setLoading(false);
         }
@@ -235,6 +276,39 @@ export default function PaySupplierScreen() {
                             </TouchableOpacity>
                         </View>
 
+                        {/* Payment Method */}
+                        <View style={styles.field}>
+                            <Text style={styles.label}>Payment Method</Text>
+                            <TouchableOpacity style={styles.select} onPress={() => setShowPaymentMethodModal(true)}>
+                                <Text style={styles.selectText}>{paymentMethod} ▼</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Conditional Cheque Fields */}
+                        {paymentMethod === 'Cheque' && (
+                            <>
+                                <View style={styles.field}>
+                                    <Text style={styles.label}>Cheque Number *</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        value={chequeNumber}
+                                        onChangeText={setChequeNumber}
+                                        placeholder="Enter cheque number"
+                                        placeholderTextColor="#94a3b8"
+                                    />
+                                </View>
+
+                                <View style={styles.field}>
+                                    <Text style={styles.label}>Cheque Date (Post-Dated)</Text>
+                                    <TouchableOpacity style={styles.dateInput} onPress={() => setShowChequeDatePicker(true)}>
+                                        <Text style={styles.dateText}>{chequeDate.toLocaleDateString()}</Text>
+                                        <Ionicons name="calendar-outline" size={16} color="#64748b" />
+                                    </TouchableOpacity>
+                                    <Text style={styles.hintText}>💡 Won't deduct from bank until cleared</Text>
+                                </View>
+                            </>
+                        )}
+
                         <View style={styles.field}>
                             <Text style={styles.label}>Payment Date</Text>
                             <TouchableOpacity style={styles.dateInput} onPress={() => setShowDatePicker(true)}>
@@ -313,6 +387,58 @@ export default function PaySupplierScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Payment Method Modal */}
+            <Modal visible={showPaymentMethodModal} transparent animationType="slide">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modal}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Select Payment Method</Text>
+                            <TouchableOpacity onPress={() => setShowPaymentMethodModal(false)}>
+                                <Ionicons name="close" size={24} color="#1e293b" />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView>
+                            {paymentMethods.map((method) => (
+                                <TouchableOpacity
+                                    key={method}
+                                    style={styles.modalItem}
+                                    onPress={() => {
+                                        setPaymentMethod(method);
+                                        setShowPaymentMethodModal(false);
+                                    }}
+                                >
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Ionicons
+                                            name={
+                                                method === 'Cash' ? 'cash-outline' :
+                                                    method === 'Bank Transfer' ? 'card-outline' :
+                                                        method === 'M-PESA' ? 'phone-portrait-outline' :
+                                                            'document-text-outline'
+                                            }
+                                            size={20}
+                                            color="#122f8a"
+                                            style={{ marginRight: 12 }}
+                                        />
+                                        <Text style={styles.modalItemText}>{method}</Text>
+                                    </View>
+                                    {paymentMethod === method && (
+                                        <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Cheque Date Picker */}
+            <CustomDatePicker
+                visible={showChequeDatePicker}
+                onClose={() => setShowChequeDatePicker(false)}
+                date={chequeDate}
+                onChange={setChequeDate}
+            />
 
             {/* Simple Date Picker Modal Reuse */}
             <CustomDatePicker

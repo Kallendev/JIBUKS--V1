@@ -11,9 +11,11 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
+import apiService from '@/services/api';
+import { useCallback } from 'react';
 
 const { width } = Dimensions.get('window');
 
@@ -21,6 +23,22 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [greeting, setGreeting] = useState('Good Morning');
+  const [chequeSummary, setChequeSummary] = useState({
+    count: 0,
+    totalAmount: 0,
+    bankBalance: 0,
+    realAvailable: 0,
+  });
+  const [loadingCheques, setLoadingCheques] = useState(false);
+
+  // Use useFocusEffect ensures data refreshes when navigating back to dashboard
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.tenantId) {
+        fetchChequeSummary();
+      }
+    }, [user?.tenantId])
+  );
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -28,6 +46,20 @@ export default function HomeScreen() {
     else if (hour < 18) setGreeting('Good Afternoon');
     else setGreeting('Good Evening');
   }, []);
+
+  const fetchChequeSummary = async () => {
+    if (!user?.tenantId) return;
+
+    try {
+      setLoadingCheques(true);
+      const summary = await apiService.getChequeSummary(user.tenantId);
+      setChequeSummary(summary);
+    } catch (error) {
+      console.error('Error fetching cheque summary:', error);
+    } finally {
+      setLoadingCheques(false);
+    }
+  };
 
   // Mock Data
   const recentActivities = [
@@ -75,8 +107,10 @@ export default function HomeScreen() {
 
               {/* Main Balance */}
               <View style={styles.mainBalanceSection}>
-                <Text style={styles.balanceLabel}>NET BALANCE</Text>
-                <Text style={styles.balanceAmount}>KES 45,000</Text>
+                <Text style={styles.balanceLabel}>REAL AVAILABLE CASH</Text>
+                <Text style={styles.balanceAmount}>
+                  KES {chequeSummary.realAvailable.toLocaleString('en-KE', { minimumFractionDigits: 0 })}
+                </Text>
               </View>
 
               <View style={styles.divider} />
@@ -115,8 +149,12 @@ export default function HomeScreen() {
                     <Ionicons name="wallet" size={14} color="#0284c7" />
                   </View>
                   <View>
-                    <Text style={styles.statLabel}>Cash</Text>
-                    <Text style={styles.statValue}>45k</Text>
+                    <Text style={styles.statLabel}>Bank Bal</Text>
+                    <Text style={styles.statValue}>
+                      {chequeSummary.bankBalance >= 1000
+                        ? (chequeSummary.bankBalance / 1000).toFixed(1) + 'k'
+                        : chequeSummary.bankBalance.toLocaleString()}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -128,23 +166,15 @@ export default function HomeScreen() {
         <View style={styles.sectionContainer}>
           <View style={styles.actionsGrid}>
 
-            {/* 1. Purchase */}
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/new-purchase')}>
-              <View style={[styles.actionIcon, { backgroundColor: '#f3e8ff' }]}>
-                <Ionicons name="cart" size={24} color="#7c3aed" />
-              </View>
-              <Text style={styles.actionLabel}>Purchase</Text>
-            </TouchableOpacity>
-
-            {/* 2. Expense */}
+            {/* 1. Spend Money */}
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/add-expense')}>
               <View style={[styles.actionIcon, { backgroundColor: '#fff7ed' }]}>
-                <Ionicons name="receipt-outline" size={24} color="#ea580c" />
+                <Ionicons name="cash-outline" size={24} color="#ea580c" />
               </View>
-              <Text style={styles.actionLabel}>Expense</Text>
+              <Text style={styles.actionLabel}>Spend Money</Text>
             </TouchableOpacity>
 
-            {/* 3. Enter Bill */}
+            {/* 2. Enter Bill */}
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/bill-entry' as any)}>
               <View style={[styles.actionIcon, { backgroundColor: '#fff7ed' }]}>
                 <Ionicons name="document-text" size={24} color="#d97706" />
@@ -152,31 +182,23 @@ export default function HomeScreen() {
               <Text style={styles.actionLabel}>Enter Bill</Text>
             </TouchableOpacity>
 
-            {/* 4. Supplier */}
+            {/* 3. Pay Bill */}
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/analytics')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#e0e7ff' }]}>
+                <Ionicons name="card-outline" size={24} color="#4338ca" />
+              </View>
+              <Text style={styles.actionLabel}>Pay Bill</Text>
+            </TouchableOpacity>
+
+            {/* 4. Suppliers */}
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/analytics')}>
               <View style={[styles.actionIcon, { backgroundColor: '#e0e7ff' }]}>
                 <Ionicons name="people" size={24} color="#4338ca" />
               </View>
-              <Text style={styles.actionLabel}>Supplier</Text>
+              <Text style={styles.actionLabel}>Suppliers</Text>
             </TouchableOpacity>
 
-            {/* 5. Cheque */}
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/transactions')}>
-              <View style={[styles.actionIcon, { backgroundColor: '#f0f9ff' }]}>
-                <Ionicons name="wallet" size={24} color="#0284c7" />
-              </View>
-              <Text style={styles.actionLabel}>Cheque</Text>
-            </TouchableOpacity>
-
-            {/* 6. Deposit */}
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/deposit-cheque')}>
-              <View style={[styles.actionIcon, { backgroundColor: '#ecfdf5' }]}>
-                <Ionicons name="arrow-down-circle" size={24} color="#059669" />
-              </View>
-              <Text style={styles.actionLabel}>Deposit</Text>
-            </TouchableOpacity>
-
-            {/* 7. Income */}
+            {/* 5. Income */}
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/add-income')}>
               <View style={[styles.actionIcon, { backgroundColor: '#dcfce7' }]}>
                 <Ionicons name="cash" size={24} color="#15803d" />
@@ -184,7 +206,7 @@ export default function HomeScreen() {
               <Text style={styles.actionLabel}>Income</Text>
             </TouchableOpacity>
 
-            {/* 8. Transfer */}
+            {/* 6. Transfer */}
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/banking')}>
               <View style={[styles.actionIcon, { backgroundColor: '#cffafe' }]}>
                 <Ionicons name="swap-horizontal" size={24} color="#0891b2" />
@@ -192,23 +214,23 @@ export default function HomeScreen() {
               <Text style={styles.actionLabel}>Transfer</Text>
             </TouchableOpacity>
 
-            {/* 9. Receipt Upload */}
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/add-expense')}>
-              <View style={[styles.actionIcon, { backgroundColor: '#ffe4e6' }]}>
-                <Ionicons name="camera" size={24} color="#e11d48" />
+            {/* 7. Deposit */}
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/deposit-cheque')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#ecfdf5' }]}>
+                <Ionicons name="arrow-down-circle" size={24} color="#059669" />
               </View>
-              <Text style={styles.actionLabel}>Receipt Upload</Text>
+              <Text style={styles.actionLabel}>Deposit</Text>
             </TouchableOpacity>
 
-            {/* 10. Add Asset */}
+            {/* 8. Add Asset */}
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/household-assets')}>
               <View style={[styles.actionIcon, { backgroundColor: '#f1f5f9' }]}>
-                <Ionicons name="add-circle" size={24} color="#475569" />
+                <Ionicons name="home-outline" size={24} color="#475569" />
               </View>
-              <Text style={styles.actionLabel}>Add Asset</Text>
+              <Text style={styles.actionLabel}>Assets</Text>
             </TouchableOpacity>
 
-            {/* 11. Reports */}
+            {/* 9. Reports */}
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/community')}>
               <View style={[styles.actionIcon, { backgroundColor: '#f1f5f9' }]}>
                 <Ionicons name="stats-chart" size={24} color="#475569" />
@@ -219,6 +241,36 @@ export default function HomeScreen() {
           </View>
         </View>
 
+
+        {/* Pending Cheques Widget */}
+        {chequeSummary.count > 0 && (
+          <View style={styles.sectionContainer}>
+            <TouchableOpacity
+              style={styles.pendingChequesWidget}
+              onPress={() => router.push('/(tabs)/transactions')}
+            >
+              <View style={styles.pendingChequesLeft}>
+                <View style={styles.pendingChequesIcon}>
+                  <Ionicons name="time-outline" size={24} color="#d97706" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pendingChequesTitle}>Pending Cheques</Text>
+                  <Text style={styles.pendingChequesSubtitle}>
+                    {chequeSummary.count} {chequeSummary.count === 1 ? 'cheque' : 'cheques'} waiting to clear
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.pendingChequesRight}>
+                <Text style={styles.pendingChequesAmount}>
+                  KES {chequeSummary.totalAmount.toLocaleString('en-KE', { minimumFractionDigits: 0 })}
+                </Text>
+                <View style={styles.pendingChequesBadge}>
+                  <Text style={styles.pendingChequesBadgeText}>{chequeSummary.count}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Recent Activity */}
         <View style={styles.sectionContainer}>
@@ -524,5 +576,68 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#f1f5f9',
     marginLeft: 74,
+  },
+  pendingChequesWidget: {
+    backgroundColor: '#fff7ed',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 2,
+    borderColor: '#fed7aa',
+    shadowColor: '#d97706',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  pendingChequesLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  pendingChequesIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+    borderWidth: 2,
+    borderColor: '#fed7aa',
+  },
+  pendingChequesTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#92400e',
+    marginBottom: 2,
+  },
+  pendingChequesSubtitle: {
+    fontSize: 13,
+    color: '#b45309',
+  },
+  pendingChequesBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#d97706',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingChequesBadgeText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  pendingChequesRight: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  pendingChequesAmount: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#92400e',
   },
 });
