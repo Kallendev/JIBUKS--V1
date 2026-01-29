@@ -74,12 +74,12 @@ export default function VendorsScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={24} color="#1f2937" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Vendors</Text>
+                    <Text style={styles.headerTitle}>Suppliers</Text>
                     <View style={{ width: 40 }} />
                 </View>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color="#fe9900" />
-                    <Text style={styles.loadingText}>Loading vendors...</Text>
+                    <Text style={styles.loadingText}>Loading suppliers...</Text>
                 </View>
             </SafeAreaView>
         );
@@ -92,7 +92,7 @@ export default function VendorsScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color="#1f2937" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Vendors</Text>
+                <Text style={styles.headerTitle}>Suppliers</Text>
                 <TouchableOpacity onPress={() => router.push('/add-supplier')} style={styles.addButton}>
                     <Ionicons name="add" size={24} color="#fff" />
                 </TouchableOpacity>
@@ -111,7 +111,7 @@ export default function VendorsScreen() {
                         <Ionicons name="search" size={20} color="#6b7280" />
                         <TextInput
                             style={styles.searchInput}
-                            placeholder="Search vendors..."
+                            placeholder="Search suppliers..."
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                         />
@@ -124,12 +124,12 @@ export default function VendorsScreen() {
                         <View style={styles.emptyState}>
                             <Ionicons name="business-outline" size={64} color="#d1d5db" />
                             <Text style={styles.emptyText}>
-                                {searchQuery ? 'No vendors found' : 'No vendors yet'}
+                                {searchQuery ? 'No suppliers found' : 'No suppliers yet'}
                             </Text>
                             <Text style={styles.emptySubtext}>
                                 {searchQuery
                                     ? 'Try a different search term'
-                                    : 'Tap the + button to add your first vendor'}
+                                    : 'Tap the + button to add your first supplier'}
                             </Text>
                         </View>
                     ) : (

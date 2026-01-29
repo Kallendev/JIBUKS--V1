@@ -19,8 +19,14 @@ import apiService from '@/services/api';
 export default function NewPurchaseScreen() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
-    const [vendors, setVendors] = useState([]);
-    const [accounts, setAccounts] = useState([]);
+    // State with types
+    const [vendors, setVendors] = useState<any[]>([]);
+    const [accounts, setAccounts] = useState<any[]>([]);
+    const [items, setItems] = useState<any[]>([
+        { description: '', quantity: '', unitPrice: '', accountId: '' }
+    ]);
+    const [tax, setTax] = useState('0');
+    const [discount, setDiscount] = useState('0');
 
     // Form state
     const [vendorId, setVendorId] = useState('');
@@ -28,11 +34,6 @@ export default function NewPurchaseScreen() {
     const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
     const [dueDate, setDueDate] = useState('');
     const [notes, setNotes] = useState('');
-    const [items, setItems] = useState([
-        { description: '', quantity: '', unitPrice: '', accountId: '' }
-    ]);
-    const [tax, setTax] = useState('0');
-    const [discount, setDiscount] = useState('0');
 
     useEffect(() => {
         loadData();
@@ -42,17 +43,17 @@ export default function NewPurchaseScreen() {
         try {
             setLoading(true);
             const [vendorsData, accountsData] = await Promise.all([
-                apiService.request('/vendors'),
-                apiService.request('/accounts')
+                apiService.request<any[]>('/vendors'),
+                apiService.request<any[]>('/accounts')
             ]);
-            
+
             console.log('✅ Vendors loaded:', vendorsData?.length || 0);
             console.log('✅ Accounts loaded:', accountsData?.length || 0);
-            
+
             setVendors(vendorsData || []);
             // Filter for expense accounts
-            setAccounts(accountsData?.filter(a => a.type === 'EXPENSE' || a.type === 'ASSET') || []);
-            
+            setAccounts(accountsData?.filter((a: any) => a.type === 'EXPENSE' || a.type === 'ASSET') || []);
+
             // Show warning if no vendors
             if (!vendorsData || vendorsData.length === 0) {
                 Alert.alert(
@@ -64,7 +65,7 @@ export default function NewPurchaseScreen() {
                     ]
                 );
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('❌ Error loading data:', error);
             Alert.alert('Error', `Failed to load data: ${error.message || 'Unknown error'}`);
         } finally {
@@ -76,7 +77,7 @@ export default function NewPurchaseScreen() {
         setItems([...items, { description: '', quantity: '', unitPrice: '', accountId: '' }]);
     };
 
-    const removeItem = (index) => {
+    const removeItem = (index: number) => {
         if (items.length === 1) {
             Alert.alert('Error', 'At least one item is required');
             return;
@@ -85,7 +86,7 @@ export default function NewPurchaseScreen() {
         setItems(newItems);
     };
 
-    const updateItem = (index, field, value) => {
+    const updateItem = (index: number, field: string, value: string) => {
         const newItems = [...items];
         newItems[index][field] = value;
         setItems(newItems);
@@ -120,7 +121,7 @@ export default function NewPurchaseScreen() {
             if (!item.quantity) errors.push('quantity');
             if (!item.unitPrice) errors.push('unit price');
             if (!item.accountId) errors.push('account');
-            
+
             if (errors.length > 0) {
                 return { index: index + 1, errors };
             }
@@ -128,7 +129,7 @@ export default function NewPurchaseScreen() {
         }).filter(Boolean);
 
         if (invalidItems.length > 0) {
-            const errorMessages = invalidItems.map(item => 
+            const errorMessages = invalidItems.map(item =>
                 `Item ${item.index}: Missing ${item.errors.join(', ')}`
             ).join('\n');
             Alert.alert('Incomplete Items', errorMessages);
@@ -153,7 +154,7 @@ export default function NewPurchaseScreen() {
                     if (isNaN(accountId)) {
                         throw new Error(`Invalid account ID: ${item.accountId}. Please make sure you're logged in and accounts are loaded from the backend.`);
                     }
-                    
+
                     return {
                         description: item.description,
                         quantity: parseFloat(item.quantity),
@@ -167,9 +168,6 @@ export default function NewPurchaseScreen() {
                 status: 'UNPAID'
             };
 
-            console.log('📦 Submitting purchase:', JSON.stringify(purchaseData, null, 2));
-            console.log('📋 Valid items:', validItems);
-
             await apiService.request('/purchases', {
                 method: 'POST',
                 body: JSON.stringify(purchaseData)
@@ -178,7 +176,7 @@ export default function NewPurchaseScreen() {
             Alert.alert('Success', 'Purchase created successfully', [
                 { text: 'OK', onPress: () => router.back() }
             ]);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error creating purchase:', error);
             Alert.alert('Error', error.error || 'Failed to create purchase');
         } finally {
@@ -203,8 +201,8 @@ export default function NewPurchaseScreen() {
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Vendor Information</Text>
                         {vendors.length === 0 && (
-                            <TouchableOpacity 
-                                onPress={() => router.push('/vendors')} 
+                            <TouchableOpacity
+                                onPress={() => router.push('/vendors')}
                                 style={styles.addVendorButton}
                             >
                                 <Ionicons name="add" size={18} color="#2563eb" />
@@ -223,10 +221,10 @@ export default function NewPurchaseScreen() {
                         >
                             <Picker.Item label="Select Vendor" value="" />
                             {vendors.map(vendor => (
-                                <Picker.Item 
-                                    key={vendor.id} 
-                                    label={vendor.name} 
-                                    value={vendor.id.toString()} 
+                                <Picker.Item
+                                    key={vendor.id}
+                                    label={vendor.name}
+                                    value={vendor.id.toString()}
                                 />
                             ))}
                         </Picker>
@@ -312,10 +310,10 @@ export default function NewPurchaseScreen() {
                                 >
                                     <Picker.Item label="Select Account" value="" />
                                     {accounts.map(account => (
-                                        <Picker.Item 
-                                            key={account.id} 
-                                            label={`${account.code} - ${account.name}`} 
-                                            value={account.id.toString()} 
+                                        <Picker.Item
+                                            key={account.id}
+                                            label={`${account.code} - ${account.name}`}
+                                            value={account.id.toString()}
                                         />
                                     ))}
                                 </Picker>
@@ -506,7 +504,6 @@ const styles = StyleSheet.create({
         marginLeft: 8,
         fontSize: 16,
         color: '#1f2937',
-        outlineStyle: 'none',
     },
     inputSmall: {
         backgroundColor: '#f9fafb',
@@ -517,7 +514,6 @@ const styles = StyleSheet.create({
         height: 48,
         fontSize: 16,
         color: '#1f2937',
-        outlineStyle: 'none',
     },
     textArea: {
         backgroundColor: '#f9fafb',
@@ -529,7 +525,6 @@ const styles = StyleSheet.create({
         color: '#1f2937',
         minHeight: 80,
         textAlignVertical: 'top',
-        outlineStyle: 'none',
     },
     pickerContainer: {
         flexDirection: 'row',
@@ -547,8 +542,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#1f2937',
         backgroundColor: 'transparent',
-        border: 'none',
-        outlineStyle: 'none',
     },
     row: {
         flexDirection: 'row',

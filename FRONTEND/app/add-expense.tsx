@@ -137,10 +137,11 @@ export default function SpendMoneyScreen() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [cats, accs, dashboard] = await Promise.all([
+      const [cats, accs, dashboard, vendorList] = await Promise.all([
         apiService.getCategories(),
         apiService.getPaymentEligibleAccounts(),
         apiService.getDashboard(),
+        apiService.getVendors({ active: true }).catch(() => [])
       ]);
 
       const expenseCats = cats.filter((c: any) => c.type?.toLowerCase() === 'expense');
@@ -156,8 +157,15 @@ export default function SpendMoneyScreen() {
       const cash = accs.find((a: any) => a.code === '1000' || a.name?.toLowerCase().includes('cash'));
       setAccount(mpesa || cash || accs[0]);
 
-      // Load common vendors (you can enhance this with an API call)
-      setVendors(['Safaricom', 'Airtel', 'Shell', 'Total', 'Rubis', 'KPLC', 'Kenya Power', 'Naivas', 'Carrefour']);
+      // Load vendors from backend
+      if (vendorList && vendorList.length > 0) {
+        // Unique names just in case
+        const names = Array.from(new Set(vendorList.map((v: any) => v.name)));
+        setVendors(names as string[]);
+      } else {
+        setVendors(['Safaricom', 'Airtel', 'Shell', 'Total', 'Rubis', 'KPLC', 'Kenya Power', 'Naivas', 'Carrefour']);
+      }
+
     } catch (error) {
       Alert.alert('Error', 'Failed to load data');
     } finally {

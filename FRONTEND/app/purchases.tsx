@@ -16,7 +16,7 @@ import apiService from '@/services/api';
 
 export default function PurchasesScreen() {
     const router = useRouter();
-    const [purchases, setPurchases] = useState([]);
+    const [purchases, setPurchases] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [filter, setFilter] = useState('ALL'); // ALL, UNPAID, PAID
@@ -28,10 +28,9 @@ export default function PurchasesScreen() {
     const loadPurchases = async () => {
         try {
             setLoading(true);
-            const params = filter !== 'ALL' ? { status: filter } : {};
-            const data = await apiService.request('/purchases', {
-                method: 'GET',
-                params
+            const queryString = filter !== 'ALL' ? `?status=${filter}` : '';
+            const data = await apiService.request(`/purchases${queryString}`, {
+                method: 'GET'
             });
             setPurchases(data);
         } catch (error) {

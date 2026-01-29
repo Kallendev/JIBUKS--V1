@@ -245,8 +245,21 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'Type and amount are required' });
         }
 
-        if (!['INCOME', 'EXPENSE'].includes(type)) {
-            return res.status(400).json({ error: 'Type must be INCOME or EXPENSE' });
+        // Support full double-entry accounting types
+        const validTypes = [
+            'INCOME',           // Revenue/Salary (Credit Income, Debit Asset)
+            'EXPENSE',          // Costs/Purchases (Debit Expense, Credit Asset)
+            'TRANSFER',         // Asset to Asset movement (Debit Asset, Credit Asset)
+            'LIABILITY_INC',    // Taking a Loan - Money In, Debt Up (Debit Asset, Credit Liability)
+            'LIABILITY_DEC',    // Repaying a Loan - Money Out, Debt Down (Debit Liability, Credit Asset)
+            'DEPOSIT'           // Legacy support for deposits (treated as LIABILITY_INC if liability account involved)
+        ];
+
+        if (!validTypes.includes(type)) {
+            return res.status(400).json({
+                error: `Type must be one of: ${validTypes.join(', ')}`,
+                received: type
+            });
         }
 
         const parsedAmount = parseFloat(amount);
@@ -258,6 +271,220 @@ router.post('/', async (req, res) => {
         let resolvedDebitAccountId = null;
         let resolvedCreditAccountId = null;
         let journalDescription = `${type}: ${payee || category}${description ? ' - ' + description : ''}`;
+
+        // ==========================================
+        // SPECIAL HANDLING: LIABILITY TRANSACTIONS
+        // ==========================================
+        // For LIABILITY_INC (Loan Disbursement) and LIABILITY_DEC (Loan Repayment),
+        // we need to ensure proper account resolution
+
+        if (type === 'LIABILITY_INC' || type === 'DEPOSIT') {
+            // LOAN DISBURSEMENT: Money comes in (Debit Asset), Debt goes up (Credit Liability)
+            // Frontend should provide: debitAccountId (bank/cash), creditAccountId (loan account)
+
+            if (!debitAccountId || !creditAccountId) {
+                return res.status(400).json({
+                    error: 'Loan disbursement requires both debitAccountId (deposit account) and creditAccountId (liability account)'
+                });
+            }
+
+            // Resolve the accounts
+            const debitIdToFind = typeof debitAccountId === 'string' && debitAccountId.startsWith('acct-')
+                ? parseInt(debitAccountId.replace('acct-', ''))
+                : parseInt(debitAccountId);
+
+            const creditIdToFind = typeof creditAccountId === 'string' && creditAccountId.startsWith('acct-')
+                ? parseInt(creditAccountId.replace('acct-', ''))
+                : parseInt(creditAccountId);
+
+            const [debitAccount, creditAccount] = await Promise.all([
+                prisma.account.findFirst({ where: { tenantId, id: debitIdToFind } }),
+                prisma.account.findFirst({ where: { tenantId, id: creditIdToFind } })
+            ]);
+
+            if (!debitAccount || !creditAccount) {
+                return res.status(400).json({
+                    error: 'Invalid account IDs provided for loan disbursement',
+                    debug: { debitAccountFound: !!debitAccount, creditAccountFound: !!creditAccount }
+                });
+            }
+
+            // Verify account types
+            if (debitAccount.type !== 'ASSET') {
+                return res.status(400).json({
+                    error: 'Debit account must be an ASSET account (bank/cash) for loan disbursement'
+                });
+            }
+
+            if (creditAccount.type !== 'LIABILITY') {
+                return res.status(400).json({
+                    error: 'Credit account must be a LIABILITY account (loan) for loan disbursement'
+                });
+            }
+
+            resolvedDebitAccountId = debitAccount.id;
+            resolvedCreditAccountId = creditAccount.id;
+
+            // Create the journal entry
+            const journal = await createJournalEntry({
+                tenantId,
+                debitAccountId: resolvedDebitAccountId,
+                creditAccountId: resolvedCreditAccountId,
+                amount: parsedAmount,
+                description: journalDescription,
+                date: date ? new Date(date) : new Date(),
+                createdById: userId,
+            });
+            journalRef = journal;
+
+            // Create transaction record
+            const transaction = await prisma.transaction.create({
+                data: {
+                    tenantId,
+                    userId,
+                    type: 'LIABILITY_INC',  // Normalize DEPOSIT to LIABILITY_INC
+                    amount: parsedAmount,
+                    category: category || 'Loan Disbursement',
+                    description: description || `Loan received: ${creditAccount.name}`,
+                    date: date ? new Date(date) : new Date(),
+                    paymentMethod: paymentMethod || 'Bank Transfer',
+                    notes,
+                    journalId: journalRef.id,
+                    debitAccountId: resolvedDebitAccountId,
+                    creditAccountId: resolvedCreditAccountId,
+                },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            avatarUrl: true,
+                        },
+                    },
+                },
+            });
+
+            console.log(`[Transactions] Created loan disbursement ${transaction.id} with journal ${journalRef.id}`);
+
+            return res.status(201).json({
+                ...transaction,
+                amount: Number(transaction.amount),
+                journalReference: journalRef.reference,
+                debitAccountId: `acct-${resolvedDebitAccountId}`,
+                creditAccountId: `acct-${resolvedCreditAccountId}`,
+            });
+        }
+
+        if (type === 'LIABILITY_DEC') {
+            // LOAN REPAYMENT: Money goes out (Credit Asset), Debt goes down (Debit Liability + Interest Expense)
+            // This is typically a SPLIT transaction where:
+            // - Credit: Asset Account (total payment)
+            // - Debit: Liability Account (principal reduction)
+            // - Debit: Interest Expense Account (interest portion)
+
+            // The split logic below will handle this, but we need to ensure creditAccountId is set
+            if (!creditAccountId && !accountId) {
+                return res.status(400).json({
+                    error: 'Loan repayment requires creditAccountId (payment source account)'
+                });
+            }
+
+            // Let the split logic handle the rest, but mark this for special processing
+            journalDescription = `Loan Repayment: ${payee || category}${description ? ' - ' + description : ''}`;
+        }
+
+        if (type === 'TRANSFER') {
+            // TRANSFER: Asset to Asset movement
+            // Debit: Destination Asset, Credit: Source Asset
+
+            if (!debitAccountId || !creditAccountId) {
+                return res.status(400).json({
+                    error: 'Transfer requires both debitAccountId (destination) and creditAccountId (source)'
+                });
+            }
+
+            // Resolve the accounts
+            const debitIdToFind = typeof debitAccountId === 'string' && debitAccountId.startsWith('acct-')
+                ? parseInt(debitAccountId.replace('acct-', ''))
+                : parseInt(debitAccountId);
+
+            const creditIdToFind = typeof creditAccountId === 'string' && creditAccountId.startsWith('acct-')
+                ? parseInt(creditAccountId.replace('acct-', ''))
+                : parseInt(creditAccountId);
+
+            const [debitAccount, creditAccount] = await Promise.all([
+                prisma.account.findFirst({ where: { tenantId, id: debitIdToFind } }),
+                prisma.account.findFirst({ where: { tenantId, id: creditIdToFind } })
+            ]);
+
+            if (!debitAccount || !creditAccount) {
+                return res.status(400).json({
+                    error: 'Invalid account IDs provided for transfer'
+                });
+            }
+
+            // Both should be assets
+            if (debitAccount.type !== 'ASSET' || creditAccount.type !== 'ASSET') {
+                return res.status(400).json({
+                    error: 'Both accounts must be ASSET accounts for a transfer'
+                });
+            }
+
+            resolvedDebitAccountId = debitAccount.id;
+            resolvedCreditAccountId = creditAccount.id;
+
+            // Create the journal entry
+            const journal = await createJournalEntry({
+                tenantId,
+                debitAccountId: resolvedDebitAccountId,
+                creditAccountId: resolvedCreditAccountId,
+                amount: parsedAmount,
+                description: journalDescription,
+                date: date ? new Date(date) : new Date(),
+                createdById: userId,
+            });
+            journalRef = journal;
+
+            // Create transaction record
+            const transaction = await prisma.transaction.create({
+                data: {
+                    tenantId,
+                    userId,
+                    type: 'TRANSFER',
+                    amount: parsedAmount,
+                    category: category || 'Transfer',
+                    description: description || `Transfer from ${creditAccount.name} to ${debitAccount.name}`,
+                    date: date ? new Date(date) : new Date(),
+                    paymentMethod: paymentMethod || 'Transfer',
+                    notes,
+                    journalId: journalRef.id,
+                    debitAccountId: resolvedDebitAccountId,
+                    creditAccountId: resolvedCreditAccountId,
+                },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            avatarUrl: true,
+                        },
+                    },
+                },
+            });
+
+            console.log(`[Transactions] Created transfer ${transaction.id} with journal ${journalRef.id}`);
+
+            return res.status(201).json({
+                ...transaction,
+                amount: Number(transaction.amount),
+                journalReference: journalRef.reference,
+                debitAccountId: `acct-${resolvedDebitAccountId}`,
+                creditAccountId: `acct-${resolvedCreditAccountId}`,
+            });
+        }
+
 
         // ==========================================
         // SCENARIO 1: SPLIT TRANSACTION (Advanced)
@@ -290,14 +517,15 @@ router.post('/', async (req, res) => {
             if (!creditAccountCode) {
                 // Check paymentMethod
                 const paymentMethodToAccount = {
-                    'Cash': '1000',
-                    'M-Pesa': '1030',
-                    'Mpesa': '1030',
-                    'Bank Transfer': '1010',
-                    'Bank Card': '1010',
+                    'Cash': '1001',
+                    'M-Pesa': '1010',
+                    'Mpesa': '1010',
+                    'M-PESA': '1010',
+                    'Bank Transfer': '1020',
+                    'Bank Card': '1020',
                     'Credit Card': '2000',
                 };
-                creditAccountCode = paymentMethodToAccount[paymentMethod] || '1000'; // Default Cash
+                creditAccountCode = paymentMethodToAccount[paymentMethod] || '1001'; // Default Cash
             }
 
             const { creditAccountId: creditId } = await resolveAccountIds(tenantId, '1000', creditAccountCode);
@@ -317,12 +545,18 @@ router.post('/', async (req, res) => {
             // Construct Journal Lines
             const lines = [];
 
-            // 1. Credit Line (Total Payment)
+            // 1. Credit Line (Total Payment / Revenue Source)
+            const creditDescription = type === 'INCOME'
+                ? `Income from ${payee || 'Source'}`
+                : type === 'LIABILITY_DEC'
+                    ? `Loan payment from ${payee || 'Account'}`
+                    : `Payment to ${payee || 'Multiple'}`;
+
             lines.push({
                 accountId: resolvedCreditAccountId,
                 debit: 0,
                 credit: parsedAmount,
-                description: `Payment to ${payee || 'Multiple'}`,
+                description: creditDescription,
             });
 
             // 2. Debit Lines (Splits)
@@ -371,43 +605,77 @@ router.post('/', async (req, res) => {
         else {
             const categoryToUse = category || 'Uncategorized';
 
-            if (debitAccountId && creditAccountId) {
-                // Frontend provided specific accounts
+            // Check if frontend provided specific account IDs
+            if (debitAccountId || creditAccountId) {
+                // Frontend provided at least one specific account
                 // Handle both "acct-123" strings and raw integers
-                let debitIdToFind = debitAccountId;
-                let creditIdToFind = creditAccountId;
 
-                if (typeof debitAccountId === 'string' && debitAccountId.startsWith('acct-')) {
-                    debitIdToFind = parseInt(debitAccountId.replace('acct-', ''));
-                }
-                if (typeof creditAccountId === 'string' && creditAccountId.startsWith('acct-')) {
-                    creditIdToFind = parseInt(creditAccountId.replace('acct-', ''));
-                }
+                // Resolve Debit Account if provided
+                if (debitAccountId) {
+                    let debitIdToFind = debitAccountId;
+                    if (typeof debitAccountId === 'string' && debitAccountId.startsWith('acct-')) {
+                        debitIdToFind = parseInt(debitAccountId.replace('acct-', ''));
+                    }
 
-                // If they are fast-tracked integers or parsed strings, check they exist
-                const [debitAccount, creditAccount] = await Promise.all([
-                    prisma.account.findFirst({ where: { tenantId, id: parseInt(debitIdToFind) } }),
-                    prisma.account.findFirst({ where: { tenantId, id: parseInt(creditIdToFind) } }),
-                ]);
+                    const debitAccount = await prisma.account.findFirst({
+                        where: { tenantId, id: parseInt(debitIdToFind) }
+                    });
 
-                // Fallback: If id lookup failed, try code lookup (legacy behavior)
-                if (!debitAccount && typeof debitAccountId === 'string') {
-                    const d = await prisma.account.findFirst({ where: { tenantId, code: debitAccountId } });
-                    if (d) resolvedDebitAccountId = d.id;
-                } else {
-                    resolvedDebitAccountId = debitAccount?.id;
+                    if (debitAccount) {
+                        resolvedDebitAccountId = debitAccount.id;
+                    } else if (typeof debitAccountId === 'string') {
+                        // Fallback: try code lookup
+                        const d = await prisma.account.findFirst({ where: { tenantId, code: debitAccountId } });
+                        if (d) resolvedDebitAccountId = d.id;
+                    }
                 }
 
-                if (!creditAccount && typeof creditAccountId === 'string') {
-                    const c = await prisma.account.findFirst({ where: { tenantId, code: creditAccountId } });
-                    if (c) resolvedCreditAccountId = c.id;
-                } else {
-                    resolvedCreditAccountId = creditAccount?.id;
+                // Resolve Credit Account if provided
+                if (creditAccountId) {
+                    let creditIdToFind = creditAccountId;
+                    if (typeof creditAccountId === 'string' && creditAccountId.startsWith('acct-')) {
+                        creditIdToFind = parseInt(creditAccountId.replace('acct-', ''));
+                    }
+
+                    const creditAccount = await prisma.account.findFirst({
+                        where: { tenantId, id: parseInt(creditIdToFind) }
+                    });
+
+                    if (creditAccount) {
+                        resolvedCreditAccountId = creditAccount.id;
+                    } else if (typeof creditAccountId === 'string') {
+                        // Fallback: try code lookup
+                        const c = await prisma.account.findFirst({ where: { tenantId, code: creditAccountId } });
+                        if (c) resolvedCreditAccountId = c.id;
+                    }
+                }
+
+                // Now resolve the missing side using category mapping
+                if (!resolvedDebitAccountId || !resolvedCreditAccountId) {
+                    const mapping = getAccountMapping(categoryToUse, type);
+
+                    if (!resolvedDebitAccountId) {
+                        const { debitAccountId: mappedDebitId } = await resolveAccountIds(
+                            tenantId,
+                            mapping.debitAccountCode,
+                            '1000' // dummy
+                        );
+                        resolvedDebitAccountId = mappedDebitId;
+                    }
+
+                    if (!resolvedCreditAccountId) {
+                        const { creditAccountId: mappedCreditId } = await resolveAccountIds(
+                            tenantId,
+                            '1000', // dummy
+                            mapping.creditAccountCode
+                        );
+                        resolvedCreditAccountId = mappedCreditId;
+                    }
                 }
 
                 // INTERCEPTION FOR CHEQUES:
-                // If paying by cheque, we crédito "Uncleared Cheques Payable" instead of Bank Account immediately.
-                if (paymentMethod === 'Cheque' && type === 'EXPENSE') {
+                // If paying by cheque, we credit "Uncleared Cheques Payable" instead of Bank Account immediately.
+                if (paymentMethod === 'Cheque' && type === 'EXPENSE' && resolvedCreditAccountId) {
                     const unclearedAccount = await prisma.account.findFirst({
                         where: { tenantId, systemTag: 'UNCLEARED_CHEQUES' }
                     });
@@ -486,8 +754,24 @@ router.post('/', async (req, res) => {
             }
 
             if (!resolvedDebitAccountId || !resolvedCreditAccountId) {
+                console.error('[Transactions] Account resolution failed:', {
+                    type,
+                    category: categoryToUse,
+                    resolvedDebitAccountId,
+                    resolvedCreditAccountId,
+                    debitAccountId,
+                    creditAccountId,
+                    accountId,
+                    paymentMethod,
+                });
                 return res.status(400).json({
                     error: 'Unable to determine accounting accounts. Please select accounts manually.',
+                    debug: {
+                        type,
+                        category: categoryToUse,
+                        hasDebitAccount: !!resolvedDebitAccountId,
+                        hasCreditAccount: !!resolvedCreditAccountId,
+                    }
                 });
             }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Dimensions, Image, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -82,7 +82,7 @@ export default function FamilySetupScreen() {
 
   const handleContinue = async () => {
     if (!familyName.trim()) {
-      alert('Please enter your family name');
+      Alert.alert('Validation Error', 'Please enter your family name');
       return;
     }
 
@@ -95,7 +95,7 @@ export default function FamilySetupScreen() {
       // @ts-ignore
       router.push('/income-sources');
     } catch (error) {
-      alert('Failed to save family setup');
+      Alert.alert('Error', 'Failed to save family setup');
       console.error(error);
     } finally {
       setLoading(false);

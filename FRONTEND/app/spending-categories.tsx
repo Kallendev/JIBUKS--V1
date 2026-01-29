@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -50,7 +50,7 @@ export default function SpendingCategoriesScreen() {
 
   const handleContinue = async () => {
     if (selectedCategories.length === 0) {
-      alert('Please select at least one category to continue.');
+      Alert.alert('Validation Error', 'Please select at least one category to continue.');
       return;
     }
 
@@ -73,7 +73,7 @@ export default function SpendingCategoriesScreen() {
       });
     } catch (error) {
       console.error(error);
-      alert('Failed to save spending categories');
+      Alert.alert('Error', 'Failed to save spending categories');
     } finally {
       setLoading(false);
     }

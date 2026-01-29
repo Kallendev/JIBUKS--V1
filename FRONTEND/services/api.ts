@@ -8,7 +8,7 @@ const getEnvVar = (key: string, defaultValue: string = ''): string => {
   return Constants.expoConfig?.extra?.[key] || process.env[key] || defaultValue;
 };
 
-const LOCAL_IP = getEnvVar('EXPO_PUBLIC_LOCAL_IP', '192.168.1.100');
+const LOCAL_IP = getEnvVar('EXPO_PUBLIC_LOCAL_IP', '172.20.10.2');
 const API_PORT = getEnvVar('EXPO_PUBLIC_API_PORT', '4400');
 
 // Build API base URL based on platform
@@ -78,7 +78,7 @@ export interface AuthResponse {
   user: User;
 }
 
-export type TransactionType = 'INCOME' | 'EXPENSE' | 'TRANSFER';
+export type TransactionType = 'INCOME' | 'EXPENSE' | 'TRANSFER' | 'LIABILITY_INC' | 'LIABILITY_DEC' | 'DEPOSIT';
 
 export interface Category {
   id: string;
@@ -100,6 +100,7 @@ export interface Account {
   name: string;
   code?: string;
   type: 'ASSET' | 'LIABILITY' | 'INCOME' | 'EXPENSE' | 'EQUITY';
+  subtype?: string;
   currency?: string;
   parentAccountId?: string | null;
   balance?: number;
@@ -236,7 +237,7 @@ class ApiService {
     return `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
   }
 
-  private async request<T>(
+  public async request<T = any>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
@@ -269,7 +270,7 @@ class ApiService {
         },
       });
 
-      const data = await response.json();
+      const data = await response.json() as { error?: string };
 
       if (!response.ok) {
         throw {
@@ -403,8 +404,8 @@ class ApiService {
 
     return this.request('/family/members', {
       method: 'POST',
-      headers: isFormData ? {} : { 'Content-Type': 'application/json' }, // Fetch handles Content-Type for FormData
-      body: isFormData ? data : JSON.stringify(data),
+      headers: isFormData ? {} : { 'Content-Type': 'application/json' },
+      body: (isFormData ? data : JSON.stringify(data)) as any,
     });
   }
 
@@ -453,7 +454,7 @@ class ApiService {
     return this.request('/vendors', {
       method: 'POST',
       headers: isFormData ? {} : { 'Content-Type': 'application/json' },
-      body: isFormData ? data : JSON.stringify(data),
+      body: (isFormData ? data : JSON.stringify(data)) as any,
     });
   }
 
@@ -462,7 +463,7 @@ class ApiService {
     return this.request(`/vendors/${id}`, {
       method: 'PUT',
       headers: isFormData ? {} : { 'Content-Type': 'application/json' },
-      body: isFormData ? data : JSON.stringify(data),
+      body: (isFormData ? data : JSON.stringify(data)) as any,
     });
   }
 
@@ -599,6 +600,34 @@ class ApiService {
     return this.request(`/invoices${suffix}`);
   }
 
+  // ============================================
+  // LENDING / DEBT TRACKER METHODS
+  // ============================================
+
+  async getLendingDashboard(): Promise<any> {
+    return this.request('/lending/dashboard');
+  }
+
+  async issueLoan(data: any): Promise<any> {
+    return this.request('/lending/issue', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async recordLoanRepayment(data: any): Promise<any> {
+    return this.request('/lending/repay', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async writeOffLoan(loanId: string): Promise<any> {
+    return this.request(`/lending/${loanId}/write-off`, {
+      method: 'POST',
+    });
+  }
+
   async getInvoice(id: number): Promise<any> {
     return this.request(`/invoices/${id}`);
   }
@@ -718,7 +747,7 @@ class ApiService {
     return this.request('/purchases', {
       method: 'POST',
       headers: isFormData ? {} : { 'Content-Type': 'application/json' },
-      body: isFormData ? data : JSON.stringify(data),
+      body: (isFormData ? data : JSON.stringify(data)) as any,
     });
   }
 
@@ -812,7 +841,7 @@ class ApiService {
 
     return this.request('/family/profile', {
       method: 'PUT',
-      body: formData,
+      body: formData as any,
     });
   }
 
@@ -1026,6 +1055,53 @@ class ApiService {
       ? this.baseUrl.slice(0, -4)
       : this.baseUrl;
     return `${rootUrl}${path.startsWith('/') ? '' : '/'}${path}`;
+  }
+  // ============================================
+  // FIXED ASSETS ENDPOINTS
+  // ============================================
+
+  async getFixedAssets(params?: { status?: string; active?: boolean }): Promise<any[]> {
+    const query = new URLSearchParams();
+    if (params?.status) query.append('status', params.status);
+    if (params?.active !== undefined) query.append('active', String(params.active));
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return this.request<any[]>(`/fixed-assets${suffix}`);
+  }
+
+  async getFixedAsset(id: string | number): Promise<any> {
+    return this.request<any>(`/fixed-assets/${id}`);
+  }
+
+  async getFixedAssetAccounts(): Promise<Account[]> {
+    return this.request<Account[]>('/fixed-assets/accounts');
+  }
+
+  async createFixedAsset(data: any): Promise<any> {
+    return this.request<any>('/fixed-assets', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateFixedAsset(id: string | number, data: any): Promise<any> {
+    return this.request<any>(`/fixed-assets/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async depreciateAsset(id: string | number, newValue: number): Promise<any> {
+    return this.request<any>(`/fixed-assets/${id}/depreciate`, {
+      method: 'POST',
+      body: JSON.stringify({ newValue }),
+    });
+  }
+
+  async disposeAsset(id: string | number, data: { disposalPrice: number; disposalAccountId?: number; date: string }): Promise<any> {
+    return this.request<any>(`/fixed-assets/${id}/dispose`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 }
 

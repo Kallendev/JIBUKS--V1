@@ -230,6 +230,22 @@ export default function ManageScreen() {
 
           <TouchableOpacity
             style={styles.actionCard}
+            onPress={() => router.push('/fixed-assets' as any)}
+          >
+            <View style={styles.actionLeft}>
+              <View style={[styles.actionIcon, { backgroundColor: '#fe990020' }]}>
+                <Ionicons name="cube" size={24} color="#fe9900" />
+              </View>
+              <View>
+                <Text style={styles.actionTitle}>My Wealth (Assets)</Text>
+                <Text style={styles.actionSubtitle}>Track cars, land, electronics & value</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
             onPress={() => router.push('/family-settings' as any)}
           >
             <View style={styles.actionLeft}>

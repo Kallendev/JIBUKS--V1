@@ -45,6 +45,8 @@ model Tenant {
   vendorTags            VendorTag[]
   paymentAccounts       PaymentAccount[]
   cheques               Cheque[]
+  transfers             Transfer[]
+  loans                 Loan[]
 
   @@map("tenants")
 }
@@ -83,6 +85,7 @@ model Account {
   isContra        Boolean       @default(false) @map("is_contra") // Contra accounts (negative balances)
   isActive        Boolean       @default(true) @map("is_active")
   currency        String        @default("KES")
+  metadata        Json?         // Flexible field for Loan Terms (rate, installment, dates) or Bank Details
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
@@ -96,6 +99,15 @@ model Account {
   expenses        Expense[]
   expenseCategories ExpenseCategory[]
   paymentAccounts PaymentAccount[]
+  transfersFrom   Transfer[]    @relation("TransferFromAccount")
+  transfersTo     Transfer[]    @relation("TransferToAccount")
+  // Fixed Assets relations
+  fixedAssets       FixedAsset[]  @relation("AssetAccount")
+  assetsPaidFrom    FixedAsset[]  @relation("PaidFromAccount")
+  assetsFinanced    FixedAsset[]  @relation("FinanceAccount")
+  assetsAccumDep    FixedAsset[]  @relation("AccumDepAccount")
+  assetsDepExp      FixedAsset[]  @relation("DepreciationExpAccount")
+  assetsDisposal    FixedAsset[]  @relation("DisposalAccount")
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -150,9 +162,11 @@ model Journal {
   purchasePayments PurchasePayment[]
   stockMovements  StockMovement[]
   bankTransactions BankTransaction[]
-  depreciationEntries DepreciationEntry[]
+  assetDepreciations AssetDepreciation[] @relation("DepreciationJournal")
   invoices        Invoice[]
   invoicePayments InvoicePayment[]
+  transfers       Transfer[]
+  loanTransactions LoanTransaction[]
 
   @@index([tenantId])
   @@index([date])
@@ -204,6 +218,10 @@ model User {
   transactions          Transaction[]
   recurringTransactions RecurringTransaction[]
   tenant                Tenant?                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  transfers             Transfer[]
+  // Fixed Assets relations
+  ownedAssets           FixedAsset[]           @relation("AssetOwner")
+  createdAssets         FixedAsset[]           @relation("AssetCreator")
 
   resetPasswordOtp      String?                @map("reset_password_otp")
   resetPasswordExpires  DateTime?              @map("reset_password_expires")
@@ -349,6 +367,8 @@ enum TransactionType {
   SALE
   DEPOSIT
   WITHDRAWAL
+  LIABILITY_INC  // Loan Disbursement - Money in, Debt up
+  LIABILITY_DEC  // Loan Repayment - Money out, Debt down
 }
 
 // ============================================
@@ -592,55 +612,7 @@ enum BankStatus {
   CANCELLED
 }
 
-// Fixed Assets Management
-model FixedAsset {
-  id                      Int                  @id @default(autoincrement())
-  tenantId                Int                  @map("tenant_id")
-  name                    String
-  description             String?
-  assetNumber             String?              @map("asset_number")
-  purchaseDate            DateTime             @map("purchase_date")
-  purchasePrice           Decimal              @map("purchase_price")
-  salvageValue            Decimal              @default(0) @map("salvage_value")
-  usefulLife              Int                  @map("useful_life") // in months
-  depreciationMethod      DepreciationMethod   @default(STRAIGHT_LINE) @map("depreciation_method")
-  assetAccountId          Int                  @map("asset_account_id")
-  depreciationAccountId   Int                  @map("depreciation_account_id")
-  accumulatedDepreciation Decimal              @default(0) @map("accumulated_depreciation")
-  currentValue            Decimal              @map("current_value")
-  isActive                Boolean              @default(true) @map("is_active")
-  createdAt               DateTime             @default(now()) @map("created_at")
-  updatedAt               DateTime             @updatedAt @map("updated_at")
-  
-  tenant                  Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  depreciationEntries     DepreciationEntry[]
-  
-  @@index([tenantId])
-  @@map("fixed_assets")
-}
 
-enum DepreciationMethod {
-  STRAIGHT_LINE
-  DECLINING_BALANCE
-  UNITS_OF_PRODUCTION
-}
-
-// Depreciation Entries
-model DepreciationEntry {
-  id              Int        @id @default(autoincrement())
-  assetId         Int        @map("asset_id")
-  period          DateTime   // Month/Year of depreciation
-  amount          Decimal
-  journalId       Int?       @map("journal_id")
-  createdAt       DateTime   @default(now()) @map("created_at")
-  
-  asset           FixedAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  journal         Journal?   @relation(fields: [journalId], references: [id])
-  
-  @@index([assetId])
-  @@index([period])
-  @@map("depreciation_entries")
-}
 
 // ============================================
 // SALES & INVOICING - QuickBooks Style
@@ -835,6 +807,144 @@ enum InvoiceStatus {
 }
 
 // ============================================
+// TRANSFER MANAGEMENT - Money Movement Between Accounts
+// ============================================
+
+model Transfer {
+  id              Int      @id @default(autoincrement())
+  tenantId        Int      @map("tenant_id")
+  fromAccountId   Int      @map("from_account_id")
+  toAccountId     Int      @map("to_account_id")
+  amount          Decimal  // Amount transferred (arriving at destination)
+  fee             Decimal  @default(0) // Transfer/bank fee
+  date            DateTime @default(now())
+  reference       String?  // Transaction reference
+  description     String?
+  journalId       Int?     @map("journal_id")
+  createdById     Int?     @map("created_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  fromAccount     Account  @relation("TransferFromAccount", fields: [fromAccountId], references: [id])
+  toAccount       Account  @relation("TransferToAccount", fields: [toAccountId], references: [id])
+  journal         Journal? @relation(fields: [journalId], references: [id])
+  createdBy       User?    @relation(fields: [createdById], references: [id])
+  
+  @@index([tenantId])
+  @@index([fromAccountId])
+  @@index([toAccountId])
+  @@index([date])
+  @@map("transfers")
+}
+
+// ============================================
+// FIXED ASSETS MANAGEMENT - Family Wealth Tracker
+// ============================================
+
+model FixedAsset {
+  id                  Int           @id @default(autoincrement())
+  tenantId            Int           @map("tenant_id")
+  
+  // Identity
+  name                String        // e.g., "Toyota Vitz - KCD 123G"
+  category            String        // e.g., "Motor Vehicle", "Electronics"
+  assetAccountId      Int           @map("asset_account_id") // Links to COA (1510, 1520, etc.)
+  serialNumber        String?       @map("serial_number") // VIN, Chassis, Serial
+  familyOwnerId       Int?          @map("family_owner_id") // Which family member owns it
+  
+  // Financials
+  purchaseDate        DateTime      @map("purchase_date")
+  purchasePrice       Decimal       @map("purchase_price")
+  quantity            Decimal?      @default(1) // Number of units (e.g. 500 Shares)
+  unitCost            Decimal?      // Cost per unit
+  currentValue        Decimal       @map("current_value") // Updated via depreciation
+  paidFromAccountId   Int?          @map("paid_from_account_id") // Cash/Bank account
+  financeAccountId    Int?          @map("finance_account_id") // Loan/Liability account
+  cashPortion         Decimal?      @map("cash_portion") // If split payment
+  financePortion      Decimal?      @map("finance_portion") // If split payment
+  vendor              String?       // Supplier name
+  
+  // Lifecycle - Warranty
+  trackWarranty       Boolean       @default(false) @map("track_warranty")
+  warrantyExpiry      DateTime?     @map("warranty_expiry")
+  warrantyNotified    Boolean       @default(false) @map("warranty_notified")
+  
+  // Lifecycle - Depreciation
+  isDepreciating      Boolean       @default(false) @map("is_depreciating")
+  lifespanYears       Int?          @map("lifespan_years")
+  salvageValue        Decimal?      @map("salvage_value") // Value at end of life
+  depreciationMethod  String?       @map("depreciation_method") // "straight_line", "manual"
+  accumDepAccountId   Int?          @map("accum_dep_account_id") // Links to 1710, 1730, etc.
+  depreciationExpAccId Int?         @map("depreciation_exp_acc_id") // Links to 6910, 6930, etc.
+  totalDepreciation   Decimal       @default(0) @map("total_depreciation")
+  
+  // Status
+  status              AssetStatus   @default(ACTIVE)
+  disposalDate        DateTime?     @map("disposal_date")
+  disposalPrice       Decimal?      @map("disposal_price")
+  disposalAccountId   Int?          @map("disposal_account_id") // Where money went
+  
+  // Documents
+  photoUrl            String?       @map("photo_url")
+  documents           Json?         // Array of document URLs
+  
+  // Journal tracking
+  purchaseJournalId   Int?          @map("purchase_journal_id")
+  
+  // Metadata
+  notes               String?
+  createdById         Int?          @map("created_by_id")
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+  
+  // Relations
+  tenant              Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assetAccount        Account       @relation("AssetAccount", fields: [assetAccountId], references: [id])
+  paidFromAccount     Account?      @relation("PaidFromAccount", fields: [paidFromAccountId], references: [id])
+  financeAccount      Account?      @relation("FinanceAccount", fields: [financeAccountId], references: [id])
+  accumDepAccount     Account?      @relation("AccumDepAccount", fields: [accumDepAccountId], references: [id])
+  depreciationExpAcc  Account?      @relation("DepreciationExpAccount", fields: [depreciationExpAccId], references: [id])
+  disposalAccount     Account?      @relation("DisposalAccount", fields: [disposalAccountId], references: [id])
+  familyOwner         User?         @relation("AssetOwner", fields: [familyOwnerId], references: [id])
+  createdBy           User?         @relation("AssetCreator", fields: [createdById], references: [id])
+  depreciationEntries AssetDepreciation[]
+  
+  @@index([tenantId])
+  @@index([assetAccountId])
+  @@index([status])
+  @@index([purchaseDate])
+  @@map("fixed_assets")
+}
+
+enum AssetStatus {
+  ACTIVE
+  DISPOSED
+  SOLD
+  WRITTEN_OFF
+}
+
+model AssetDepreciation {
+  id              Int         @id @default(autoincrement())
+  fixedAssetId    Int         @map("fixed_asset_id")
+  date            DateTime    @default(now())
+  previousValue   Decimal     @map("previous_value")
+  newValue        Decimal     @map("new_value")
+  depreciationAmt Decimal     @map("depreciation_amount")
+  journalId       Int?        @map("journal_id")
+  notes           String?
+  createdAt       DateTime    @default(now()) @map("created_at")
+  
+  // Relations
+  fixedAsset      FixedAsset  @relation(fields: [fixedAssetId], references: [id], onDelete: Cascade)
+  journal         Journal?    @relation("DepreciationJournal", fields: [journalId], references: [id])
+  
+  @@index([fixedAssetId])
+  @@map("asset_depreciations")
+}
+
+// ============================================
 // CHEQUE MANAGEMENT - Revolutionary Feature
 // ============================================
 
@@ -881,3 +991,57 @@ enum ChequeStatus {
   VOIDED    // Cancelled/voided
 }
 
+// ============================================
+// DEBT TRACKER / LENDING MANAGER
+// ============================================
+
+model Loan {
+  id              String    @id @default(cuid())
+  tenantId        Int       @map("tenant_id")
+  
+  // Who involves?
+  borrowerName    String    @map("borrower_name") // e.g., "Cousin Ben"
+  phoneNumber     String?   @map("phone_number")  // For reminders
+  
+  // Loan Details
+  type            String    // 'LENT' (Asset) or 'BORROWED' (Liability)
+  principalAmount Decimal   @db.Decimal(10, 2) @map("principal_amount")
+  balance         Decimal   @db.Decimal(10, 2) // Current outstanding
+  
+  // Dates
+  issueDate       DateTime  @map("issue_date")
+  dueDate         DateTime? @map("due_date")
+  
+  // Links to Accounting
+  accountId       Int       @map("account_id") // The tracking account (e.g., 1200 for Lent, 2010 for Borrowed)
+  
+  // Relations
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  transactions    LoanTransaction[]
+  
+  status          String    // 'ACTIVE', 'PAID', 'WRITTEN_OFF'
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@map("loans")
+}
+
+model LoanTransaction {
+  id              String   @id @default(cuid())
+  loanId          String   @map("loan_id")
+  loan            Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  
+  date            DateTime
+  amount          Decimal  @db.Decimal(10, 2)
+  type            String   // 'REPAYMENT', 'INTEREST', 'ADJUSTMENT'
+  
+  journalId       Int      @map("journal_id")
+  journal         Journal  @relation(fields: [journalId], references: [id])
+
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([loanId])
+  @@map("loan_transactions")
+}
