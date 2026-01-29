@@ -1,5 +1,7 @@
 import { Alert, Platform } from 'react-native';
 
+declare const window: any;
+
 interface AlertButton {
     text?: string;
     onPress?: () => void;

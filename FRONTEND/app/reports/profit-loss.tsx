@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import apiService from '@/services/api';
 
 export default function ProfitLossScreen() {
@@ -27,6 +27,7 @@ export default function ProfitLossScreen() {
         loadData();
     }, [selectedPeriod]);
 
+    // ... existing toggleSection code ...
     const toggleSection = (section: string) => {
         const newExpanded = new Set(expandedSections);
         if (newExpanded.has(section)) {
@@ -101,6 +102,7 @@ export default function ProfitLossScreen() {
     if (loading) {
         return (
             <SafeAreaView style={styles.container}>
+                <Stack.Screen options={{ headerShown: false }} />
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={24} color="#1f2937" />
@@ -119,6 +121,7 @@ export default function ProfitLossScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
+            <Stack.Screen options={{ headerShown: false }} />
             {/* Professional Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>

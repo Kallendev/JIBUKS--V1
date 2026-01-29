@@ -512,11 +512,44 @@ export default function AddIncomeScreen() {
 
               {/* Section A: Gross */}
               <View style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <View style={[styles.iconBox, { backgroundColor: '#EFF6FF' }]}>
-                    <Ionicons name="cash-outline" size={20} color={COLORS.primary} />
+                <View style={[styles.cardHeader, { justifyContent: 'space-between' }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={[styles.iconBox, { backgroundColor: '#EFF6FF' }]}>
+                      <Ionicons name="cash-outline" size={20} color={COLORS.primary} />
+                    </View>
+                    <Text style={styles.sectionTitle}>1. Gross Earnings</Text>
                   </View>
-                  <Text style={styles.sectionTitle}>1. Gross Earnings</Text>
+                  <TouchableOpacity
+                    style={styles.autoFillBtn}
+                    onPress={async () => {
+                      setLoading(true);
+                      try {
+                        const txs = await apiService.getTransactions({ type: 'INCOME', limit: 10 });
+                        const lastSalary = txs.find(t => t.category === 'Salary' || (t.description && t.description.toLowerCase().includes('salary')));
+
+                        if (lastSalary) {
+                          setGrossAmount(lastSalary.amount.toString());
+                          setEmployer(lastSalary.payee || lastSalary.description?.replace('Salary: ', '') || '');
+                          Alert.alert('Auto-Filled', `Loaded details from ${new Date(lastSalary.date).toLocaleDateString()}`);
+
+                          // If we had split details in the transaction object from the API, we could parse them here.
+                          // But since getTransactions currently might not return full split details in the simplified list, 
+                          // we stick to the main headers for now unless we fetch details.
+                          // Optimistic UI for now.
+                        } else {
+                          Alert.alert('No History', 'Could not find a previous salary slip.');
+                        }
+                      } catch (e) {
+                        console.error(e);
+                        Alert.alert('Error', 'Failed to fetch history');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                  >
+                    <Ionicons name="flash" size={14} color="#fff" />
+                    <Text style={styles.autoFillText}>Clone Last Month</Text>
+                  </TouchableOpacity>
                 </View>
 
                 <Text style={styles.label}>Income Type (Source Account)</Text>
@@ -710,22 +743,71 @@ export default function AddIncomeScreen() {
         onSelect={setSelectedPaymentMethod}
       />
 
-      {/* 5. Deductions Modal */}
-      <SelectorModal
-        visible={showDeductionAccountModal.visible}
-        onClose={() => setShowDeductionAccountModal({ visible: false, rowId: null })}
-        title="Select Deduction Type"
-        items={deductionHeadings}
-        onSelect={(item) => {
-          if (showDeductionAccountModal.rowId) {
-            setDeductions(prev => prev.map(row =>
-              row.id === showDeductionAccountModal.rowId
-                ? { ...row, accountId: item.id, name: item.name.replace(/(Tax:|Insurance:)\s*/, '') }
-                : row
-            ));
-          }
-        }}
-      />
+      {/* 5. Deductions Modal (Grouped) */}
+      <Modal visible={showDeductionAccountModal.visible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Deduction Type</Text>
+              <TouchableOpacity onPress={() => setShowDeductionAccountModal({ visible: false, rowId: null })} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 20 }}>
+              {/* EXPENSES GROUP */}
+              <Text style={styles.groupHeader}>DEDUCTIONS (EXPENSES)</Text>
+              {deductionHeadings.filter(i => i.category === 'Statutory').map(item => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.modalItem}
+                  onPress={() => {
+                    if (showDeductionAccountModal.rowId) {
+                      setDeductions(prev => prev.map(row =>
+                        row.id === showDeductionAccountModal.rowId
+                          ? { ...row, accountId: item.id.toString(), name: item.name.replace(/(Tax:|Insurance:)\s*/, '') }
+                          : row
+                      ));
+                    }
+                    setShowDeductionAccountModal({ visible: false, rowId: null });
+                  }}
+                >
+                  <View style={[styles.dropdownIcon, { backgroundColor: '#FEE2E2' }]}>
+                    <Ionicons name="arrow-up-circle" size={18} color="#EF4444" />
+                  </View>
+                  <Text style={styles.modalItemText}>{item.name}</Text>
+                </TouchableOpacity>
+              ))}
+
+              <View style={{ height: 20 }} />
+
+              {/* TRANSFERS GROUP */}
+              <Text style={[styles.groupHeader, { color: '#2563EB' }]}>TRANSFERS (ASSETS/LOANS)</Text>
+              {deductionHeadings.filter(i => i.category === 'Transfer').map(item => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.modalItem}
+                  onPress={() => {
+                    if (showDeductionAccountModal.rowId) {
+                      setDeductions(prev => prev.map(row =>
+                        row.id === showDeductionAccountModal.rowId
+                          ? { ...row, accountId: item.id.toString(), name: item.name }
+                          : row
+                      ));
+                    }
+                    setShowDeductionAccountModal({ visible: false, rowId: null });
+                  }}
+                >
+                  <View style={[styles.dropdownIcon, { backgroundColor: '#DBEAFE' }]}>
+                    <Ionicons name="swap-horizontal" size={18} color="#2563EB" />
+                  </View>
+                  <Text style={styles.modalItemText}>{item.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* 6. Income Account Modal (Payslip Mode) */}
       <SelectorModal
@@ -797,7 +879,29 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   content: {
-    padding: 20
+    padding: 20,
+  },
+  groupHeader: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#EF4444',
+    marginBottom: 10,
+    marginTop: 5,
+    letterSpacing: 0.5
+  },
+  autoFillBtn: {
+    backgroundColor: COLORS.secondary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
+  },
+  autoFillText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700'
   },
   formContainer: {
     gap: 16

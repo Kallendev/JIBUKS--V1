@@ -108,9 +108,7 @@ export default function AccountsScreen() {
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Chart of Accounts</Text>
-          <TouchableOpacity onPress={() => useAccounts().refresh()} style={styles.backButton}>
-            <Ionicons name="refresh" size={24} color="#fff" />
-          </TouchableOpacity>
+          <View style={{ width: 40 }} />
         </View>
         <Text style={styles.headerSubtitle}>{accounts.length} Accounts • Real-time Balances</Text>
       </LinearGradient>

@@ -68,6 +68,17 @@ export default function HomeScreen() {
     { id: 3, title: 'Rent Payment Pending', date: 'Jan 10, 2026', type: 'warning', amount: 'KES 25,000' },
   ];
 
+  const COLORS = {
+    primary: '#122f8a',
+    secondary: '#fe9900',
+    white: '#ffffff',
+    bg: '#F3F4F6',
+    text: '#1F2937',
+    textLight: '#6B7280',
+    border: '#E5E7EB',
+    danger: '#EF4444',
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#122f8a" />
@@ -182,7 +193,15 @@ export default function HomeScreen() {
               <Text style={styles.actionLabel}>Enter Bill</Text>
             </TouchableOpacity>
 
-            {/* 3. Pay Bill */}
+            {/* 3. Debt Tracker */}
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/lending')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#F3E8FF' }]}>
+                <Ionicons name="people-outline" size={24} color="#9333EA" />
+              </View>
+              <Text style={styles.actionLabel}>Debt Tracker</Text>
+            </TouchableOpacity>
+
+            {/* 4. Pay Bill */}
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/analytics')}>
               <View style={[styles.actionIcon, { backgroundColor: '#e0e7ff' }]}>
                 <Ionicons name="card-outline" size={24} color="#4338ca" />
@@ -190,15 +209,31 @@ export default function HomeScreen() {
               <Text style={styles.actionLabel}>Pay Bill</Text>
             </TouchableOpacity>
 
-            {/* 4. Suppliers */}
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/analytics')}>
-              <View style={[styles.actionIcon, { backgroundColor: '#e0e7ff' }]}>
-                <Ionicons name="people" size={24} color="#4338ca" />
+            {/* 5. Add Loan */}
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/add-loan')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#FEE2E2' }]}>
+                <Ionicons name="add-circle-outline" size={24} color="#EF4444" />
+              </View>
+              <Text style={styles.actionLabel}>Add Loan</Text>
+            </TouchableOpacity>
+
+            {/* 6. Repay Loan */}
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/repay-loan')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#DBEAFE' }]}>
+                <Ionicons name="return-down-back" size={24} color="#2563EB" />
+              </View>
+              <Text style={styles.actionLabel}>Repay Loan</Text>
+            </TouchableOpacity>
+
+            {/* 7. Suppliers */}
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/vendors' as any)}>
+              <View style={[styles.actionIcon, { backgroundColor: '#f0fdf4' }]}>
+                <Ionicons name="people-outline" size={24} color="#15803d" />
               </View>
               <Text style={styles.actionLabel}>Suppliers</Text>
             </TouchableOpacity>
 
-            {/* 5. Income */}
+            {/* 7. Income */}
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/add-income')}>
               <View style={[styles.actionIcon, { backgroundColor: '#dcfce7' }]}>
                 <Ionicons name="cash" size={24} color="#15803d" />
@@ -206,36 +241,60 @@ export default function HomeScreen() {
               <Text style={styles.actionLabel}>Income</Text>
             </TouchableOpacity>
 
-            {/* 6. Transfer */}
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/banking')}>
+            {/* 8. Transfer */}
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/transfer')}>
               <View style={[styles.actionIcon, { backgroundColor: '#cffafe' }]}>
                 <Ionicons name="swap-horizontal" size={24} color="#0891b2" />
               </View>
               <Text style={styles.actionLabel}>Transfer</Text>
             </TouchableOpacity>
 
-            {/* 7. Deposit */}
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/deposit-cheque')}>
-              <View style={[styles.actionIcon, { backgroundColor: '#ecfdf5' }]}>
-                <Ionicons name="arrow-down-circle" size={24} color="#059669" />
-              </View>
-              <Text style={styles.actionLabel}>Deposit</Text>
-            </TouchableOpacity>
-
-            {/* 8. Add Asset */}
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/household-assets')}>
+            {/* 9. Assets */}
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/fixed-assets' as any)}>
               <View style={[styles.actionIcon, { backgroundColor: '#f1f5f9' }]}>
                 <Ionicons name="home-outline" size={24} color="#475569" />
               </View>
               <Text style={styles.actionLabel}>Assets</Text>
             </TouchableOpacity>
 
-            {/* 9. Reports */}
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/community')}>
-              <View style={[styles.actionIcon, { backgroundColor: '#f1f5f9' }]}>
-                <Ionicons name="stats-chart" size={24} color="#475569" />
+          </View>
+        </View>
+
+        {/* Debt Crusher Widget (Demo) */}
+        <View style={styles.sectionContainer}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 20, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: '#FEE2E2', borderStyle: 'dashed' }}>
+            <View style={[styles.sectionHeaderRow, { marginBottom: 10 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ backgroundColor: '#FEF2F2', padding: 8, borderRadius: 8 }}>
+                  <Ionicons name="trending-down" size={20} color="#EF4444" />
+                </View>
+                <Text style={{ fontWeight: '700', fontSize: 16, color: '#EF4444' }}>DEBT CRUSHER</Text>
               </View>
-              <Text style={styles.actionLabel}>Reports</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#9CA3AF' }}>Top Priority</Text>
+            </View>
+
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#1F2937', marginBottom: 5 }}>KCB Car Loan</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+              <Text style={{ color: '#6B7280', fontSize: 12 }}>Initial: 1.2M</Text>
+              <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '700' }}>Current: 980,000</Text>
+            </View>
+
+            {/* Progress Bar */}
+            <View style={{ height: 8, backgroundColor: '#F3F4F6', borderRadius: 4, width: '100%', overflow: 'hidden', marginBottom: 15 }}>
+              <View style={{ height: 8, backgroundColor: '#10B981', width: '18%', borderRadius: 4 }} />
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 5 }}>
+              <Ionicons name="calendar-outline" size={14} color="#6B7280" />
+              <Text style={{ fontSize: 12, color: '#6B7280' }}>Project Debt Free: <Text style={{ fontWeight: '700', color: '#1F2937' }}>Nov 2028</Text></Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Ionicons name="alert-circle-outline" size={14} color="#F59E0B" />
+              <Text style={{ fontSize: 12, color: '#6B7280' }}>Interest Paid: <Text style={{ fontWeight: '700', color: '#F59E0B' }}>KES 150,000</Text></Text>
+            </View>
+
+            <TouchableOpacity style={{ marginTop: 15, padding: 12, backgroundColor: '#EFF6FF', borderRadius: 12, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#DBEAFE' }} onPress={() => router.push('/lending')}>
+              <Text style={{ color: COLORS.primary, fontWeight: '700' }}>RECORD PAYMENT</Text>
             </TouchableOpacity>
 
           </View>
