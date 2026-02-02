@@ -5,6 +5,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ONBOARDING_KEY = 'businessOnboardingComplete';
 
+/**
+ * Entry point for business: new users go to onboarding first,
+ * returning users (who completed setup) go to dashboard.
+ */
 export default function BusinessTabsIndex() {
     const router = useRouter();
 
@@ -14,12 +18,12 @@ export default function BusinessTabsIndex() {
         async function decideRoute() {
             try {
                 const completed = await AsyncStorage.getItem(ONBOARDING_KEY);
-                if (mounted) {
-                    if (completed === 'true') {
-                        router.replace('/business-tabs/business-dashboard');
-                    } else {
-                        router.replace('/business-tabs/business-onboarding');
-                    }
+                if (!mounted) return;
+                // Only go to dashboard if onboarding was explicitly completed; otherwise setup first
+                if (completed === 'true') {
+                    router.replace('/business-tabs/business-dashboard');
+                } else {
+                    router.replace('/business-tabs/business-onboarding');
                 }
             } catch {
                 if (mounted) {
