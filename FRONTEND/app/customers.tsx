@@ -13,24 +13,40 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Picker } from '@react-native-picker/picker';
 import apiService from '@/services/api';
 
 export default function CustomersScreen() {
     const router = useRouter();
-    const [customers, setCustomers] = useState<any[]>([]);
+    const [customersData, setCustomersData] = useState<any>({ customers: [], pagination: {} });
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [showModal, setShowModal] = useState(false);
+    const [businessTypeFilter, setBusinessTypeFilter] = useState('');
 
     // New customer form
     const [formData, setFormData] = useState({
         name: '',
+        companyName: '',
         email: '',
         phone: '',
+        alternatePhone: '',
         address: '',
         city: '',
+        state: '',
+        zipCode: '',
+        country: 'Kenya',
         paymentTerms: 'Net 30',
+        creditLimit: '',
+        taxNumber: '',
+        taxId: '',
+        website: '',
+        contactPerson: '',
+        position: '',
+        businessType: '',
+        industry: '',
+        notes: '',
     });
 
     useEffect(() => {
@@ -40,8 +56,14 @@ export default function CustomersScreen() {
     const loadCustomers = async () => {
         try {
             setLoading(true);
-            const data = await apiService.getCustomers();
-            setCustomers(data);
+            const data = await apiService.getCustomers({
+                search: searchQuery || undefined,
+                businessType: businessTypeFilter || undefined,
+                active: true,
+                limit: 50,
+                offset: 0,
+            });
+            setCustomersData(data);
         } catch (error) {
             console.error('Error loading customers:', error);
             Alert.alert('Error', 'Failed to load customers');
@@ -68,11 +90,25 @@ export default function CustomersScreen() {
             setShowModal(false);
             setFormData({
                 name: '',
+                companyName: '',
                 email: '',
                 phone: '',
+                alternatePhone: '',
                 address: '',
                 city: '',
+                state: '',
+                zipCode: '',
+                country: 'Kenya',
                 paymentTerms: 'Net 30',
+                creditLimit: '',
+                taxNumber: '',
+                taxId: '',
+                website: '',
+                contactPerson: '',
+                position: '',
+                businessType: '',
+                industry: '',
+                notes: '',
             });
             loadCustomers();
         } catch (error) {
@@ -85,10 +121,16 @@ export default function CustomersScreen() {
         return `KES ${Number(amount).toLocaleString()}`;
     };
 
-    const filteredCustomers = customers.filter(customer =>
-        customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (customer.email && customer.email.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
+    // Effect to reload customers when search or filter changes
+    useEffect(() => {
+        const debounceTimer = setTimeout(() => {
+            if (!loading) loadCustomers();
+        }, 300);
+
+        return () => clearTimeout(debounceTimer);
+    }, [searchQuery, businessTypeFilter]);
+
+    const filteredCustomers = customersData.customers || [];
 
     if (loading) {
         return (
@@ -128,7 +170,7 @@ export default function CustomersScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
             >
-                {/* Search */}
+                {/* Search and Filters */}
                 <View style={styles.searchContainer}>
                     <View style={styles.searchBox}>
                         <Ionicons name="search" size={20} color="#6b7280" />
@@ -138,6 +180,33 @@ export default function CustomersScreen() {
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                         />
+                    </View>
+                    
+                    <View style={styles.filterContainer}>
+                        <Text style={styles.filterLabel}>Filter by Business Type:</Text>
+                        <ScrollView 
+                            horizontal 
+                            showsHorizontalScrollIndicator={false}
+                            style={styles.filterScrollView}
+                        >
+                            {['', 'retail', 'wholesale', 'corporate', 'individual', 'government', 'nonprofit'].map((type) => (
+                                <TouchableOpacity
+                                    key={type}
+                                    style={[
+                                        styles.filterChip,
+                                        businessTypeFilter === type && styles.filterChipActive
+                                    ]}
+                                    onPress={() => setBusinessTypeFilter(type)}
+                                >
+                                    <Text style={[
+                                        styles.filterChipText,
+                                        businessTypeFilter === type && styles.filterChipTextActive
+                                    ]}>
+                                        {type === '' ? 'All' : type.charAt(0).toUpperCase() + type.slice(1)}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
                     </View>
                 </View>
 
@@ -167,11 +236,18 @@ export default function CustomersScreen() {
                                     <View style={styles.customerLeft}>
                                         <View style={styles.avatarCircle}>
                                             <Text style={styles.avatarText}>
-                                                {customer.name.charAt(0).toUpperCase()}
+                                                {(customer.companyName || customer.name).charAt(0).toUpperCase()}
                                             </Text>
                                         </View>
                                         <View style={{ flex: 1 }}>
-                                            <Text style={styles.customerName}>{customer.name}</Text>
+                                            <Text style={styles.customerName}>
+                                                {customer.companyName || customer.name}
+                                            </Text>
+                                            {customer.companyName && customer.name && (
+                                                <Text style={styles.customerContact}>
+                                                    Contact: {customer.name}
+                                                </Text>
+                                            )}
                                             {customer.email && (
                                                 <Text style={styles.customerEmail}>{customer.email}</Text>
                                             )}
@@ -179,30 +255,42 @@ export default function CustomersScreen() {
                                                 <Text style={styles.customerPhone}>{customer.phone}</Text>
                                             )}
                                         </View>
+                                        <View style={styles.customerStatus}>
+                                            {customer.balance > 0 && (
+                                                <View style={styles.balanceBadge}>
+                                                    <Text style={styles.balanceBadgeText}>
+                                                        {formatCurrency(customer.balance || 0)}
+                                                    </Text>
+                                                </View>
+                                            )}
+                                            {customer.businessType && (
+                                                <Text style={styles.businessType}>
+                                                    {customer.businessType.toUpperCase()}
+                                                </Text>
+                                            )}
+                                        </View>
                                     </View>
                                 </View>
 
-                                <View style={styles.customerDetails}>
-                                    <View style={styles.detailRow}>
-                                        <Text style={styles.detailLabel}>Balance:</Text>
+                                <View style={styles.customerStats}>
+                                    <View style={styles.statItem}>
+                                        <Text style={styles.statValue}>{customer.stats?.totalInvoices || 0}</Text>
+                                        <Text style={styles.statLabel}>Invoices</Text>
+                                    </View>
+                                    <View style={styles.statItem}>
+                                        <Text style={styles.statValue}>
+                                            {formatCurrency(customer.totalSales || 0)}
+                                        </Text>
+                                        <Text style={styles.statLabel}>Total Sales</Text>
+                                    </View>
+                                    <View style={styles.statItem}>
                                         <Text style={[
-                                            styles.balanceAmount,
-                                            { color: customer.balance > 0 ? '#ef4444' : '#10b981' }
+                                            styles.statValue,
+                                            { color: customer.stats?.overdueInvoices > 0 ? '#ef4444' : '#10b981' }
                                         ]}>
-                                            {formatCurrency(customer.balance || 0)}
+                                            {customer.stats?.overdueInvoices || 0}
                                         </Text>
-                                    </View>
-                                    <View style={styles.detailRow}>
-                                        <Text style={styles.detailLabel}>Invoices:</Text>
-                                        <Text style={styles.detailValue}>
-                                            {customer.totalInvoices || 0}
-                                        </Text>
-                                    </View>
-                                    <View style={styles.detailRow}>
-                                        <Text style={styles.detailLabel}>Payment Terms:</Text>
-                                        <Text style={styles.detailValue}>
-                                            {customer.paymentTerms || 'Net 30'}
-                                        </Text>
+                                        <Text style={styles.statLabel}>Overdue</Text>
                                     </View>
                                 </View>
 
@@ -214,10 +302,37 @@ export default function CustomersScreen() {
                                             router.push(`/create-invoice?customerId=${customer.id}` as any);
                                         }}
                                     >
-                                        <Ionicons name="document-text" size={16} color="#ec4899" />
-                                        <Text style={styles.actionButtonText}>New Invoice</Text>
+                                        <Ionicons name="document-text" size={16} color="#2563eb" />
+                                        <Text style={styles.actionButtonText}>Invoice</Text>
                                     </TouchableOpacity>
-                                    <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+                                    
+                                    {customer.phone && (
+                                        <TouchableOpacity
+                                            style={styles.actionButton}
+                                            onPress={(e) => {
+                                                e.stopPropagation();
+                                                // TODO: Add phone call functionality
+                                                Alert.alert('Call', `Call ${customer.phone}?`);
+                                            }}
+                                        >
+                                            <Ionicons name="call" size={16} color="#10b981" />
+                                            <Text style={styles.actionButtonText}>Call</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    
+                                    {customer.email && (
+                                        <TouchableOpacity
+                                            style={styles.actionButton}
+                                            onPress={(e) => {
+                                                e.stopPropagation();
+                                                // TODO: Add email functionality  
+                                                Alert.alert('Email', `Email ${customer.email}?`);
+                                            }}
+                                        >
+                                            <Ionicons name="mail" size={16} color="#f59e0b" />
+                                            <Text style={styles.actionButtonText}>Email</Text>
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
                             </TouchableOpacity>
                         ))
@@ -245,6 +360,14 @@ export default function CustomersScreen() {
                                 placeholder="Enter customer name"
                                 value={formData.name}
                                 onChangeText={(value) => setFormData({ ...formData, name: value })}
+                            />
+
+                            <Text style={styles.label}>Company Name</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="Company or business name"
+                                value={formData.companyName}
+                                onChangeText={(value) => setFormData({ ...formData, companyName: value })}
                             />
 
                             <Text style={styles.label}>Email</Text>
@@ -281,19 +404,63 @@ export default function CustomersScreen() {
                                 onChangeText={(value) => setFormData({ ...formData, city: value })}
                             />
 
-                            <Text style={styles.label}>Payment Terms</Text>
+                            <Text style={styles.label}>Business Type</Text>
                             <View style={styles.pickerContainer}>
-                                <select
-                                    value={formData.paymentTerms}
-                                    onChange={(e) => setFormData({ ...formData, paymentTerms: e.target.value })}
+                                <Picker
+                                    selectedValue={formData.businessType}
+                                    onValueChange={(value) => setFormData({ ...formData, businessType: value })}
                                     style={styles.picker}
                                 >
-                                    <option value="Due on Receipt">Due on Receipt</option>
-                                    <option value="Net 15">Net 15</option>
-                                    <option value="Net 30">Net 30</option>
-                                    <option value="Net 60">Net 60</option>
-                                </select>
+                                    <Picker.Item label="Select Business Type" value="" />
+                                    <Picker.Item label="Retail" value="retail" />
+                                    <Picker.Item label="Wholesale" value="wholesale" />
+                                    <Picker.Item label="Corporate" value="corporate" />
+                                    <Picker.Item label="Individual" value="individual" />
+                                    <Picker.Item label="Government" value="government" />
+                                    <Picker.Item label="Non-Profit" value="nonprofit" />
+                                </Picker>
                             </View>
+
+                            <Text style={styles.label}>Payment Terms</Text>
+                            <View style={styles.pickerContainer}>
+                                <Picker
+                                    selectedValue={formData.paymentTerms}
+                                    onValueChange={(value) => setFormData({ ...formData, paymentTerms: value })}
+                                    style={styles.picker}
+                                >
+                                    <Picker.Item label="Due on Receipt" value="Due on Receipt" />
+                                    <Picker.Item label="Net 15" value="Net 15" />
+                                    <Picker.Item label="Net 30" value="Net 30" />
+                                    <Picker.Item label="Net 60" value="Net 60" />
+                                </Picker>
+                            </View>
+
+                            <Text style={styles.label}>Credit Limit (KES)</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="0"
+                                value={formData.creditLimit}
+                                onChangeText={(value) => setFormData({ ...formData, creditLimit: value })}
+                                keyboardType="numeric"
+                            />
+
+                            <Text style={styles.label}>Tax Number (Optional)</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="VAT/Tax ID Number"
+                                value={formData.taxNumber}
+                                onChangeText={(value) => setFormData({ ...formData, taxNumber: value })}
+                            />
+
+                            <Text style={styles.label}>Notes</Text>
+                            <TextInput
+                                style={[styles.modalInput, { height: 80, textAlignVertical: 'top' }]}
+                                placeholder="Additional notes about this customer..."
+                                value={formData.notes}
+                                onChangeText={(value) => setFormData({ ...formData, notes: value })}
+                                multiline
+                                numberOfLines={3}
+                            />
                         </ScrollView>
 
                         <View style={styles.modalFooter}>
@@ -385,6 +552,40 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#1f2937',
     },
+    filterContainer: {
+        paddingHorizontal: 16,
+        marginBottom: 16,
+    },
+    filterLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#374151',
+        marginBottom: 8,
+    },
+    filterScrollView: {
+        marginHorizontal: -4,
+    },
+    filterChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#f3f4f6',
+        marginHorizontal: 4,
+        borderWidth: 1,
+        borderColor: 'transparent',
+    },
+    filterChipActive: {
+        backgroundColor: '#dbeafe',
+        borderColor: '#2563eb',
+    },
+    filterChipText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#6b7280',
+    },
+    filterChipTextActive: {
+        color: '#2563eb',
+    },
     listContainer: {
         paddingHorizontal: 16,
     },
@@ -455,6 +656,57 @@ const styles = StyleSheet.create({
         color: '#6b7280',
         marginTop: 2,
     },
+    customerContact: {
+        fontSize: 14,
+        color: '#6b7280',
+        marginBottom: 2,
+    },
+    customerStatus: {
+        alignItems: 'flex-end',
+        marginLeft: 'auto',
+    },
+    balanceBadge: {
+        backgroundColor: '#fee2e2',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        marginBottom: 4,
+    },
+    balanceBadgeText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#ef4444',
+    },
+    businessType: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#6b7280',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    customerStats: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#f3f4f6',
+    },
+    statItem: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    statValue: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#1f2937',
+        marginBottom: 2,
+    },
+    statLabel: {
+        fontSize: 12,
+        color: '#6b7280',
+        textAlign: 'center',
+    },
     customerDetails: {
         borderTopWidth: 1,
         borderTopColor: '#f3f4f6',
@@ -491,15 +743,19 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingVertical: 8,
         borderRadius: 8,
-        backgroundColor: '#fce7f3',
+        backgroundColor: '#f8fafc',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
         gap: 4,
+        flex: 1,
+        justifyContent: 'center',
     },
     actionButtonText: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: '600',
-        color: '#ec4899',
+        color: '#374151',
     },
     // Modal styles
     modalOverlay: {
@@ -566,7 +822,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#1f2937',
         backgroundColor: 'transparent',
-        border: 'none',
     },
     modalFooter: {
         flexDirection: 'row',

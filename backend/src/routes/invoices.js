@@ -1,9 +1,13 @@
 import express from 'express';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { verifyJWT } from '../middleware/auth.js';
+import {
+    getAccountsReceivableAccountId,
+    getDefaultRevenueAccountId,
+    getDefaultPaymentAccountId,
+} from '../services/accountingService.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // Apply JWT verification to all routes
 router.use(verifyJWT);
@@ -132,6 +136,15 @@ router.post('/', async (req, res) => {
         const discountAmount = parseFloat(discount) || 0;
         const total = subtotal + taxAmount - discountAmount;
 
+        // Resolve CoA accounts for double-entry posting
+        const arAccountId = await getAccountsReceivableAccountId(tenantId);
+        const defaultRevenueAccountId = await getDefaultRevenueAccountId(tenantId);
+        if (!arAccountId) {
+            return res.status(500).json({
+                error: 'Accounts Receivable (1250) not found. Please seed Chart of Accounts for this tenant.',
+            });
+        }
+
         // Use Prisma transaction for data integrity
         const result = await prisma.$transaction(async (tx) => {
             // Create invoice
@@ -155,7 +168,7 @@ router.post('/', async (req, res) => {
                             quantity: parseFloat(item.quantity),
                             unitPrice: parseFloat(item.unitPrice),
                             amount: parseFloat(item.quantity) * parseFloat(item.unitPrice),
-                            accountId: item.accountId ? parseInt(item.accountId) : null,
+                            accountId: item.accountId ? parseInt(item.accountId) : defaultRevenueAccountId,
                             inventoryItemId: item.inventoryItemId ? parseInt(item.inventoryItemId) : null,
                         })),
                     },
@@ -166,34 +179,41 @@ router.post('/', async (req, res) => {
                 },
             });
 
-            // Create journal entry (Double-entry bookkeeping)
+            // Build journal lines (double-entry: DR AR, CR Revenue)
+            const journalLines = [];
             // Debit: Accounts Receivable
-            // Credit: Sales Revenue (from each item's account)
-
-            const journalEntries = [];
-
-            // Debit Accounts Receivable
-            journalEntries.push({
-                accountId: null, // Should be Accounts Receivable account
+            journalLines.push({
+                accountId: arAccountId,
                 debit: total,
                 credit: 0,
                 description: `Invoice ${invoiceNumber} - ${invoice.customer.name}`,
             });
-
-            // Credit Sales Revenue for each item
+            // Credit: Sales Revenue (per line item or single line)
             for (const item of items) {
-                if (item.accountId) {
-                    journalEntries.push({
-                        accountId: parseInt(item.accountId),
+                const revenueAccountId = item.accountId ? parseInt(item.accountId) : defaultRevenueAccountId;
+                const lineAmount = parseFloat(item.quantity) * parseFloat(item.unitPrice);
+                if (revenueAccountId && lineAmount > 0) {
+                    journalLines.push({
+                        accountId: revenueAccountId,
                         debit: 0,
-                        credit: parseFloat(item.quantity) * parseFloat(item.unitPrice),
+                        credit: lineAmount,
                         description: `Invoice ${invoiceNumber} - ${item.description}`,
                     });
                 }
             }
+            // If no revenue lines (e.g. no accountId and no default), credit default revenue for full total
+            const totalCredits = journalLines.reduce((s, l) => s + Number(l.credit || 0), 0);
+            if (totalCredits < total && defaultRevenueAccountId) {
+                journalLines.push({
+                    accountId: defaultRevenueAccountId,
+                    debit: 0,
+                    credit: total - totalCredits,
+                    description: `Invoice ${invoiceNumber} - Sales`,
+                });
+            }
 
-            // Create journal
-            const journal = await tx.journal.create({
+            // Create journal with lines (correct relation name)
+            await tx.journal.create({
                 data: {
                     tenantId,
                     date: new Date(invoiceDate),
@@ -201,8 +221,13 @@ router.post('/', async (req, res) => {
                     reference: invoiceNumber,
                     status: 'POSTED',
                     invoiceId: invoice.id,
-                    entries: {
-                        create: journalEntries,
+                    lines: {
+                        create: journalLines.map(l => ({
+                            accountId: l.accountId,
+                            debit: l.debit,
+                            credit: l.credit,
+                            description: l.description,
+                        })),
                     },
                 },
             });
@@ -225,7 +250,6 @@ router.post('/', async (req, res) => {
                     });
 
                     if (inventoryItem) {
-                        // Decrease inventory quantity
                         await tx.inventoryItem.update({
                             where: { id: parseInt(item.inventoryItemId) },
                             data: {
@@ -235,7 +259,6 @@ router.post('/', async (req, res) => {
                             },
                         });
 
-                        // Create stock movement
                         await tx.stockMovement.create({
                             data: {
                                 tenantId,
@@ -374,6 +397,23 @@ router.post('/:id/payment', async (req, res) => {
             });
         }
 
+        // Resolve CoA accounts for double-entry posting
+        const arAccountId = await getAccountsReceivableAccountId(tenantId);
+        let bankAccountIdResolved = bankAccountId ? parseInt(bankAccountId) : null;
+        if (!bankAccountIdResolved) {
+            bankAccountIdResolved = await getDefaultPaymentAccountId(tenantId);
+        }
+        if (!arAccountId) {
+            return res.status(500).json({
+                error: 'Accounts Receivable (1250) not found. Please seed Chart of Accounts for this tenant.',
+            });
+        }
+        if (!bankAccountIdResolved) {
+            return res.status(500).json({
+                error: 'No payment account (Cash/Bank) found. Please seed Chart of Accounts and ensure at least one payment-eligible account exists.',
+            });
+        }
+
         const result = await prisma.$transaction(async (tx) => {
             // Create payment record
             const payment = await tx.invoicePayment.create({
@@ -382,7 +422,7 @@ router.post('/:id/payment', async (req, res) => {
                     amount: paymentAmount,
                     paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
                     paymentMethod: paymentMethod || 'Cash',
-                    bankAccountId: bankAccountId ? parseInt(bankAccountId) : null,
+                    bankAccountId: bankAccountIdResolved,
                     reference,
                     notes,
                 },
@@ -405,9 +445,7 @@ router.post('/:id/payment', async (req, res) => {
                 },
             });
 
-            // Create journal entry
-            // Debit: Bank/Cash Account
-            // Credit: Accounts Receivable
+            // Create journal entry (double-entry: DR Bank/Cash, CR AR)
             await tx.journal.create({
                 data: {
                     tenantId,
@@ -416,16 +454,16 @@ router.post('/:id/payment', async (req, res) => {
                     reference: reference || `Payment-${invoice.invoiceNumber}`,
                     status: 'POSTED',
                     invoicePaymentId: payment.id,
-                    entries: {
+                    lines: {
                         create: [
                             {
-                                accountId: bankAccountId ? parseInt(bankAccountId) : null,
+                                accountId: bankAccountIdResolved,
                                 debit: paymentAmount,
                                 credit: 0,
                                 description: `Payment from ${invoice.customer.name}`,
                             },
                             {
-                                accountId: null, // Accounts Receivable
+                                accountId: arAccountId,
                                 debit: 0,
                                 credit: paymentAmount,
                                 description: `Payment for Invoice ${invoice.invoiceNumber}`,

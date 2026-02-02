@@ -62,6 +62,14 @@ export const FAMILY_COA_TEMPLATE = [
     // ----------------------------------------
     // CASH & CASH EQUIVALENTS (1000-1099)
     // ----------------------------------------
+
+    { code: '1200', name: 'Loans to Friends/Family', type: 'ASSET', description: 'Money lent to cousins/friends', isSystem: true, isContra: false, subtype: 'receivable' },
+    { code: '1210', name: 'Salary Arrears', type: 'ASSET', description: 'Work done but not paid yet', isSystem: false, isContra: false, subtype: 'receivable' },
+    { code: '1220', name: 'Rent Security Deposits', type: 'ASSET', description: 'Refundable deposit held by Landlord', isSystem: false, isContra: false, subtype: 'receivable' },
+    { code: '1230', name: 'Utility Deposits', type: 'ASSET', description: 'Deposit held by Kenya Power/Water', isSystem: false, isContra: false, subtype: 'receivable' },
+    { code: '1240', name: 'Prepaid Expenses', type: 'ASSET', description: 'Services paid for but not used yet', isSystem: false, isContra: false, subtype: 'receivable' },
+    { code: '1250', name: 'Accounts Receivable', type: 'ASSET', description: 'Money owed by customers', isSystem: true, isContra: false, subtype: 'ar', systemTag: 'AR' },
+
     { code: '1000', name: 'Cash & Cash Equivalents', type: 'ASSET', description: 'Total physical cash and equivalents', isSystem: true, isContra: false, subtype: 'cash', isParent: true },
 
     // Physical Cash (1001-1009)
@@ -122,6 +130,7 @@ export const FAMILY_COA_TEMPLATE = [
     { code: '1094', name: 'Payoneer', type: 'ASSET', description: 'Freelancer payments', isSystem: false, isContra: false, isPaymentEligible: true, subtype: 'online_wallet', parentCode: '1090' },
     { code: '1095', name: 'Binance Wallet', type: 'ASSET', description: 'Crypto exchange wallet', isSystem: false, isContra: false, isPaymentEligible: true, subtype: 'crypto', parentCode: '1090' },
     { code: '1096', name: 'USDT (Tether)', type: 'ASSET', description: 'Stablecoin holdings', isSystem: false, isContra: false, isPaymentEligible: false, subtype: 'crypto', parentCode: '1090' },
+
 
     // ----------------------------------------
     // ACCOUNTS RECEIVABLE (1100-1149)
@@ -812,7 +821,7 @@ export async function seedFamilyCoA(tenantId, currency = 'KES') {
                     name: acc.name,
                     description: acc.description,
                     subtype: acc.subtype,
-                    // We don't update type/conra/system to avoid breaking things, unless necessary
+                    ...(acc.systemTag != null && { systemTag: acc.systemTag }),
                 },
                 create: {
                     tenantId,
@@ -824,6 +833,7 @@ export async function seedFamilyCoA(tenantId, currency = 'KES') {
                     isSystem: acc.isSystem || false,
                     isContra: acc.isContra || false,
                     isPaymentEligible: acc.isPaymentEligible || false,
+                    systemTag: acc.systemTag || null,
                     isActive: true,
                     currency,
                 }
@@ -1004,6 +1014,56 @@ export async function resolveAccountIds(tenantId, debitCode, creditCode) {
         debitAccountId: debitAccount?.id || null,
         creditAccountId: creditAccount?.id || null,
     };
+}
+
+// ============================================
+// BUSINESS / INVOICE COA HELPERS
+// ============================================
+
+/** Resolve Accounts Receivable account (code 1250 or systemTag AR) for a tenant */
+export async function getAccountsReceivableAccountId(tenantId) {
+    const account = await prisma.account.findFirst({
+        where: {
+            tenantId,
+            OR: [
+                { code: '1250' },
+                { systemTag: 'AR' },
+                { subtype: 'ar' },
+            ],
+            isActive: true,
+        },
+    });
+    return account?.id ?? null;
+}
+
+/** Resolve default revenue account (4100 Product Sales) for invoice line items */
+export async function getDefaultRevenueAccountId(tenantId) {
+    const account = await prisma.account.findFirst({
+        where: {
+            tenantId,
+            type: 'INCOME',
+            OR: [
+                { code: '4100' },
+                { code: '4110' },
+            ],
+            isActive: true,
+        },
+        orderBy: { code: 'asc' },
+    });
+    return account?.id ?? null;
+}
+
+/** Resolve default payment (cash/bank) account for invoice payments - prefers 1010 M-PESA */
+export async function getDefaultPaymentAccountId(tenantId) {
+    const account = await prisma.account.findFirst({
+        where: {
+            tenantId,
+            isPaymentEligible: true,
+            isActive: true,
+        },
+        orderBy: { code: 'asc' },
+    });
+    return account?.id ?? null;
 }
 
 // ============================================

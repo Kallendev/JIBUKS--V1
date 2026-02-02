@@ -1,6 +1,12 @@
 import express from 'express';
 import { prisma } from '../lib/prisma.js';
 import { verifyJWT } from '../middleware/auth.js';
+import {
+    getProfitAndLoss,
+    getAccountBalance,
+    getAccountsReceivableAccountId,
+    getAllAccountBalances,
+} from '../services/accountingService.js';
 
 const router = express.Router();
 
@@ -179,6 +185,155 @@ router.get('/', async (req, res) => {
     } catch (error) {
         console.error('Error fetching dashboard data:', error);
         res.status(500).json({ error: 'Failed to fetch dashboard data' });
+    }
+});
+
+// ============================================
+// BUSINESS DASHBOARD (CoA-based, small business)
+// ============================================
+router.get('/business', async (req, res) => {
+    try {
+        const { tenantId } = req.user;
+
+        if (!tenantId) {
+            return res.status(400).json({ error: 'User is not part of any tenant' });
+        }
+
+        const now = new Date();
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+        // 1. Revenue & Expenses from Chart of Accounts (journal lines this month)
+        const pl = await getProfitAndLoss(tenantId, firstDayOfMonth, lastDayOfMonth);
+        const revenue = Number(pl?.income?.total ?? 0);
+        const expenses = Number(pl?.expenses?.total ?? 0);
+        const netIncome = Number(pl?.netIncome ?? 0);
+
+        // 2. Cash/Bank balance (payment-eligible asset accounts)
+        const allBalances = await getAllAccountBalances(tenantId, now);
+        const cashBankAccounts = allBalances.filter(
+            (a) => a.isPaymentEligible && a.type === 'ASSET' && a.isActive
+        );
+        const cashBankBalance = cashBankAccounts.reduce((sum, a) => sum + Number(a.balance ?? 0), 0);
+
+        // 3. Accounts Receivable balance (from CoA)
+        const arAccountId = await getAccountsReceivableAccountId(tenantId);
+        const arBalance = arAccountId
+            ? await getAccountBalance(arAccountId, now)
+            : 0;
+
+        // 4. Invoice counts (for small business)
+        const [unpaidInvoices, overdueCount, customerCount] = await Promise.all([
+            prisma.invoice.count({
+                where: {
+                    tenantId,
+                    status: { in: ['UNPAID', 'PARTIAL'] },
+                },
+            }),
+            prisma.invoice.count({
+                where: {
+                    tenantId,
+                    status: { in: ['UNPAID', 'PARTIAL', 'OVERDUE'] },
+                    dueDate: { lt: now },
+                },
+            }),
+            prisma.customer.count({
+                where: { tenantId, isActive: true },
+            }),
+        ]);
+
+        // 5. Recent activity (journals linked to invoices/payments + recent transactions)
+        const recentJournals = await prisma.journal.findMany({
+            where: {
+                tenantId,
+                status: 'POSTED',
+                OR: [
+                    { invoiceId: { not: null } },
+                    { invoicePaymentId: { not: null } },
+                ],
+            },
+            include: {
+                lines: {
+                    include: {
+                        account: { select: { id: true, code: true, name: true, type: true } },
+                    },
+                },
+                invoice: { select: { id: true, invoiceNumber: true, total: true, customerId: true } },
+                invoicePayment: {
+                    select: { id: true, amount: true, paymentMethod: true },
+                    include: { invoice: { select: { invoiceNumber: true } } },
+                },
+            },
+            orderBy: { date: 'desc' },
+            take: 15,
+        });
+
+        const recentActivity = recentJournals.map((j) => {
+            const totalDebit = j.lines.reduce((s, l) => s + Number(l.debit || 0), 0);
+            const totalCredit = j.lines.reduce((s, l) => s + Number(l.credit || 0), 0);
+            const amount = totalDebit > 0 ? totalDebit : totalCredit;
+            let type = 'Journal';
+            let description = j.description;
+            if (j.invoiceId && j.invoice) {
+                type = 'Invoice';
+                description = `Invoice ${j.invoice.invoiceNumber || j.invoice.id}`;
+            } else if (j.invoicePaymentId && j.invoicePayment) {
+                type = 'Payment';
+                description = `Payment for #${j.invoicePayment.invoice?.invoiceNumber || '—'} (${j.invoicePayment.paymentMethod})`;
+            }
+            return {
+                id: `journal-${j.id}`,
+                date: j.date,
+                type,
+                description,
+                amount: type === 'Payment' ? -Number(j.invoicePayment?.amount ?? amount) : amount,
+                reference: j.reference,
+            };
+        });
+
+        // Also include last 5 generic transactions for mixed usage
+        const recentTransactions = await prisma.transaction.findMany({
+            where: { tenantId },
+            orderBy: { date: 'desc' },
+            take: 5,
+        });
+
+        const recentTransactionsFormatted = recentTransactions.map((t) => ({
+            id: `tx-${t.id}`,
+            date: t.date,
+            type: t.type,
+            description: t.description || t.category,
+            amount: t.type === 'INCOME' ? Number(t.amount) : -Number(t.amount),
+            category: t.category,
+        }));
+
+        // Merge and sort by date desc, take top 10
+        const merged = [...recentActivity, ...recentTransactionsFormatted]
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, 10);
+
+        res.json({
+            summary: {
+                revenue,
+                expenses,
+                netIncome,
+                cashBankBalance,
+                arBalance,
+            },
+            counts: {
+                unpaidInvoices,
+                overdueInvoices: overdueCount,
+                customers: customerCount,
+            },
+            recentActivity: merged,
+            period: {
+                startDate: firstDayOfMonth,
+                endDate: lastDayOfMonth,
+            },
+        });
+    } catch (error) {
+        console.error('Error fetching business dashboard:', error);
+        res.status(500).json({ error: 'Failed to fetch business dashboard data' });
     }
 });
 

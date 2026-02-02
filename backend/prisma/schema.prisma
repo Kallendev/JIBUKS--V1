@@ -144,32 +144,36 @@ model PaymentAccount {
 
 // Journal Entry (Header)
 model Journal {
-  id              Int           @id @default(autoincrement())
-  tenantId        Int           @map("tenant_id")
-  reference       String?       // Optional reference number
-  date            DateTime      @default(now())
-  description     String
-  status          JournalStatus @default(POSTED)
-  createdById     Int?          @map("created_by_id")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  id                  Int           @id @default(autoincrement())
+  tenantId            Int           @map("tenant_id")
+  reference           String?       // Optional reference number
+  date                DateTime      @default(now())
+  description         String
+  status              JournalStatus @default(POSTED)
+  createdById         Int?          @map("created_by_id")
+  invoiceId           Int?          @map("invoice_id")       // Link to invoice (sale posting)
+  invoicePaymentId    Int?          @map("invoice_payment_id") // Link to payment (payment posting)
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
 
   // Relations
-  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  lines           JournalLine[]
-  transactions    Transaction[]
-  purchases       Purchase[]
-  purchasePayments PurchasePayment[]
-  stockMovements  StockMovement[]
-  bankTransactions BankTransaction[]
-  assetDepreciations AssetDepreciation[] @relation("DepreciationJournal")
-  invoices        Invoice[]
-  invoicePayments InvoicePayment[]
-  transfers       Transfer[]
-  loanTransactions LoanTransaction[]
+  tenant              Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lines               JournalLine[]
+  transactions        Transaction[]
+  purchases           Purchase[]
+  purchasePayments    PurchasePayment[]
+  stockMovements      StockMovement[]
+  bankTransactions    BankTransaction[]
+  assetDepreciations   AssetDepreciation[] @relation("DepreciationJournal")
+  invoice             Invoice?           @relation(fields: [invoiceId], references: [id])
+  invoicePayment      InvoicePayment?    @relation(fields: [invoicePaymentId], references: [id])
+  transfers           Transfer[]
+  loanTransactions    LoanTransaction[]
 
   @@index([tenantId])
   @@index([date])
+  @@index([invoiceId])
+  @@index([invoicePaymentId])
   @@map("journals")
 }
 
@@ -623,8 +627,10 @@ model Customer {
   id            Int       @id @default(autoincrement())
   tenantId      Int       @map("tenant_id")
   name          String
+  companyName   String?   @map("company_name") // Business name if different from contact name
   email         String?
   phone         String?
+  alternatePhone String?  @map("alternate_phone")
   address       String?
   city          String?
   state         String?
@@ -633,7 +639,21 @@ model Customer {
   paymentTerms  String?   @default("Net 30") @map("payment_terms") // Net 30, Due on Receipt, etc.
   creditLimit   Decimal?  @map("credit_limit")
   balance       Decimal   @default(0) // Amount owed by customer
-  taxNumber     String?   @map("tax_number")
+  taxNumber     String?   @map("tax_number") // VAT number, tax ID
+  taxId         String?   @map("tax_id") // Business registration number
+  website       String?
+  contactPerson String?   @map("contact_person") // Primary contact name
+  position      String?   // Contact person's position/title
+  
+  // Business fields
+  businessType  String?   @map("business_type") // retail, wholesale, corporate, etc.
+  industry      String?   // manufacturing, services, retail, etc.
+  
+  // Financial tracking
+  totalSales    Decimal   @default(0) @map("total_sales") // Lifetime sales
+  lastSaleDate  DateTime? @map("last_sale_date")
+  firstSaleDate DateTime? @map("first_sale_date")
+  
   notes         String?
   isActive      Boolean   @default(true) @map("is_active")
   createdAt     DateTime  @default(now()) @map("created_at")
@@ -645,6 +665,10 @@ model Customer {
   
   @@index([tenantId])
   @@index([name])
+  @@index([companyName])
+  @@index([email])
+  @@index([taxNumber])
+  @@index([businessType])
   @@map("customers")
 }
 
