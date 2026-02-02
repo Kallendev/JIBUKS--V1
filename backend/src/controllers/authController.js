@@ -38,6 +38,15 @@ async function login(req, res, next) {
     const accessToken = generateToken(user);
     const refreshToken = generateRefreshToken(user);
 
+    let tenantType = null;
+    if (user.tenantId) {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: user.tenantId },
+        select: { tenantType: true },
+      });
+      tenantType = tenant?.tenantType ?? null;
+    }
+
     const duration = Date.now() - startTime;
     console.log(`[Login] ✅ Success for ${email} (${duration}ms)`);
 
@@ -49,7 +58,8 @@ async function login(req, res, next) {
         email: user.email,
         name: user.name,
         tenantId: user.tenantId,
-        role: user.role
+        role: user.role,
+        tenantType,
       },
     });
   } catch (err) {
@@ -64,7 +74,7 @@ async function login(req, res, next) {
  */
 async function register(req, res, next) {
   try {
-    const { firstName, lastName, email, phone, password, confirmPassword, tenantSlug } = req.body;
+    const { firstName, lastName, email, phone, password, confirmPassword, tenantSlug, tenantType } = req.body;
 
     // Validate required fields
     if (!firstName || !lastName || !email || !password || !confirmPassword) {
@@ -98,13 +108,15 @@ async function register(req, res, next) {
         return res.status(404).json({ error: 'Tenant not found. Please check the tenant slug and try again.' });
       }
     } else {
-      // Create a new tenant for this user (FAMILY type)
+      // Create a new tenant for this user (tenant type from signup)
+      const allowed = ['FAMILY', 'BUSINESS'];
+      const type = allowed.includes(tenantType) ? tenantType : 'FAMILY';
       tenant = await prisma.tenant.create({
         data: {
           name: `${firstName} ${lastName}`,
           slug: email.split('@')[0],
           ownerEmail: email,
-          tenantType: 'FAMILY',
+          tenantType: type,
         },
       });
       role = 'OWNER';
@@ -160,7 +172,8 @@ async function register(req, res, next) {
         email: user.email,
         name: user.name,
         tenantId: user.tenantId,
-        role: user.role
+        role: user.role,
+        tenantType: tenant.tenantType,
       },
     });
   } catch (err) {
@@ -219,6 +232,7 @@ async function getCurrentUser(req, res, next) {
         role: true,
         avatarUrl: true,
         createdAt: true,
+        tenant: { select: { tenantType: true } },
       },
     });
 
@@ -226,7 +240,8 @@ async function getCurrentUser(req, res, next) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json(user);
+    const { tenant, ...rest } = user;
+    res.json({ ...rest, tenantType: tenant?.tenantType ?? null });
   } catch (err) {
     next(err);
   }
