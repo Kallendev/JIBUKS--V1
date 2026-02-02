@@ -260,8 +260,12 @@ router.get('/business', async (req, res) => {
                 },
                 invoice: { select: { id: true, invoiceNumber: true, total: true, customerId: true } },
                 invoicePayment: {
-                    select: { id: true, amount: true, paymentMethod: true },
-                    include: { invoice: { select: { invoiceNumber: true } } },
+                    select: {
+                        id: true,
+                        amount: true,
+                        paymentMethod: true,
+                        invoice: { select: { invoiceNumber: true } },
+                    },
                 },
             },
             orderBy: { date: 'desc' },
