@@ -560,9 +560,21 @@ class ApiService {
   }
 
   // Customers
-  async getCustomers(params?: { active?: boolean }): Promise<any[]> {
-    const query = params?.active !== undefined ? `?active=${params.active}` : '';
-    return this.request(`/customers${query}`);
+  async getCustomers(params?: { 
+    active?: boolean; 
+    search?: string; 
+    businessType?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<any> {
+    const query = new URLSearchParams();
+    if (params?.active !== undefined) query.append('active', String(params.active));
+    if (params?.search) query.append('search', params.search);
+    if (params?.businessType) query.append('businessType', params.businessType);
+    if (params?.limit) query.append('limit', String(params.limit));
+    if (params?.offset) query.append('offset', String(params.offset));
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return this.request(`/customers${suffix}`);
   }
 
   async getCustomer(id: number): Promise<any> {
@@ -581,6 +593,30 @@ class ApiService {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+  }
+
+  async getCustomerBalance(id: number): Promise<any> {
+    return this.request(`/customers/${id}/balance`);
+  }
+
+  async getCustomerTransactions(id: number, params?: { 
+    limit?: number; 
+    offset?: number; 
+    type?: 'invoices' | 'payments';
+  }): Promise<any> {
+    const query = new URLSearchParams();
+    if (params?.limit) query.append('limit', String(params.limit));
+    if (params?.offset) query.append('offset', String(params.offset));
+    if (params?.type) query.append('type', params.type);
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return this.request(`/customers/${id}/transactions${suffix}`);
+  }
+
+  async getCustomerAnalytics(id: number, params?: { period?: string }): Promise<any> {
+    const query = new URLSearchParams();
+    if (params?.period) query.append('period', params.period);
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return this.request(`/customers/${id}/analytics${suffix}`);
   }
 
   async getCustomerStatement(id: number, params?: { startDate?: string; endDate?: string }): Promise<any> {
@@ -785,6 +821,18 @@ class ApiService {
         }
       };
     }
+  }
+
+  /**
+   * Business dashboard (CoA-based): revenue, expenses, AR, cash, counts, recent activity
+   */
+  async getBusinessDashboard(): Promise<{
+    summary: { revenue: number; expenses: number; netIncome: number; cashBankBalance: number; arBalance: number };
+    counts: { unpaidInvoices: number; overdueInvoices: number; customers: number };
+    recentActivity: Array<{ id: string; date: string; type: string; description: string; amount: number }>;
+    period: { startDate: string; endDate: string };
+  }> {
+    return this.request('/dashboard/business');
   }
 
   async getMemberDetails(memberId: string): Promise<any> {
