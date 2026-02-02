@@ -48,12 +48,15 @@ console.log('📱 Platform:', Platform.OS);
 console.log('🔧 Device:', Constants.isDevice ? 'Physical' : 'Simulator/Emulator');
 
 // TypeScript interfaces
+export type TenantType = 'FAMILY' | 'BUSINESS';
+
 export interface User {
   id: number;
   email: string;
   name: string | null;
   tenantId: number | null;
   role?: 'OWNER' | 'ADMIN' | 'PARENT' | 'CHILD' | 'MEMBER';
+  tenantType?: TenantType | null;
   avatarUrl?: string;
   createdAt?: string;
 }
@@ -70,6 +73,7 @@ export interface RegisterData {
   firstName: string;
   lastName: string;
   phone?: string;
+  tenantType?: TenantType;
 }
 
 export interface AuthResponse {
