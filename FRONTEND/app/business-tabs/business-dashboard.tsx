@@ -13,7 +13,10 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiService from '@/services/api';
+
+const ONBOARDING_KEY = 'businessOnboardingComplete';
 
 const { width } = Dimensions.get('window');
 
@@ -53,6 +56,7 @@ export default function BusinessDashboardScreen() {
     const [recentActivity, setRecentActivity] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [onboardingChecked, setOnboardingChecked] = useState(false);
 
     const businessName = Array.isArray(params.businessName)
         ? params.businessName[0]
@@ -106,13 +110,34 @@ export default function BusinessDashboardScreen() {
         }
     }, []);
 
+    // Guard: redirect to business-tabs (onboarding) if setup not completed
+    useEffect(() => {
+        let mounted = true;
+        async function checkOnboarding() {
+            try {
+                const completed = await AsyncStorage.getItem(ONBOARDING_KEY);
+                if (!mounted) return;
+                if (completed !== 'true') {
+                    router.replace('/business-tabs');
+                    return;
+                }
+                setOnboardingChecked(true);
+            } catch {
+                if (mounted) router.replace('/business-tabs');
+            }
+        }
+        checkOnboarding();
+        return () => { mounted = false };
+    }, [router]);
+
     useEffect(() => {
         loadUserData();
     }, [loadUserData]);
 
     useEffect(() => {
+        if (!onboardingChecked) return;
         loadDashboard();
-    }, [loadDashboard]);
+    }, [loadDashboard, onboardingChecked]);
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -120,6 +145,16 @@ export default function BusinessDashboardScreen() {
     }, [loadDashboard]);
 
     const displayName = userName || ownerName || 'There';
+
+    // Wait for onboarding check before showing dashboard (avoids flash before redirect)
+    if (!onboardingChecked) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="#1e3a8a" />
+                <Text style={{ marginTop: 12, fontSize: 14, color: '#64748b' }}>Loading...</Text>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -222,7 +257,7 @@ export default function BusinessDashboardScreen() {
                     </View>
                 )}
 
-                {/* Action Buttons Row */}
+                {/* Action Buttons Row — Cash Sale and Credit Sale post to Chart of Accounts (AR, Revenue, Cash/Bank) */}
                 <View style={styles.actionsRow}>
                     <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/business-tabs/sales/cash-sale')}>
                         <Text style={styles.actionButtonText}>Cash Sale</Text>
