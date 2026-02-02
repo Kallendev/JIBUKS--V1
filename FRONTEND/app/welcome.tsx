@@ -2,15 +2,25 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const { user } = useAuth();
 
   const handleBegin = () => {
-    // Navigate to account type selection screen
-    router.push('/account-type');
+    // Route to the right flow based on tenant type (set at signup)
+    const tenantType = user?.tenantType;
+    if (tenantType === 'BUSINESS') {
+      router.replace('/business-tabs');
+    } else if (tenantType === 'FAMILY') {
+      router.replace('/family-setup');
+    } else {
+      // Fallback: no tenant type (e.g. legacy user) — show account type picker
+      router.push('/account-type');
+    }
   };
 
   return (
