@@ -507,49 +507,137 @@ model PurchasePayment {
   @@map("purchase_payments")
 }
 
-// Inventory/Stock Management
+// ============================================
+// INVENTORY / STOCK MANAGEMENT - WORLD CLASS
+// ============================================
+
+// Product Type Enum
+enum ProductType {
+  GOODS       // Physical items - Track stock
+  SERVICE     // Services - No stock tracking
+  BUNDLE      // Kit/Bundle of multiple items
+}
+
+// Inventory/Stock Management - Enhanced
 model InventoryItem {
-  id              Int             @id @default(autoincrement())
-  tenantId        Int             @map("tenant_id")
-  sku             String          // Stock Keeping Unit
-  name            String
-  description     String?
-  category        String?
-  unit            String          @default("pcs") // "pcs", "kg", "liters"
-  costPrice       Decimal         @map("cost_price")
-  sellingPrice    Decimal         @map("selling_price")
-  quantity        Decimal         @default(0)
-  reorderLevel    Decimal?        @map("reorder_level")
-  assetAccountId  Int             @map("asset_account_id") // Inventory Asset account
-  cogsAccountId   Int             @map("cogs_account_id")  // Cost of Goods Sold account
-  isActive        Boolean         @default(true) @map("is_active")
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
+  id                  Int             @id @default(autoincrement())
+  tenantId            Int             @map("tenant_id")
   
-  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  movements       StockMovement[]
-  purchaseItems   PurchaseItem[]
-  invoiceItems    InvoiceItem[] 
+  // ========== IDENTIFICATION ==========
+  sku                 String          // Stock Keeping Unit (Auto-generated if empty)
+  barcode             String?         // EAN-13, UPC, or custom barcode
+  name                String
+  description         String?
+  imageUrl            String?         @map("image_url") // Product photo
+  
+  // ========== CLASSIFICATION ==========
+  productType         ProductType     @default(GOODS) @map("product_type")
+  category            String?         // "Electronics", "Food", "Apparel"
+  brand               String?         // "Samsung", "Nike"
+  unit                String          @default("pcs") // "pcs", "kg", "liters", "box"
+  
+  // ========== PRICING ==========
+  costPrice           Decimal         @map("cost_price") // Last purchase price
+  weightedAvgCost     Decimal         @default(0) @map("weighted_avg_cost") // WAC for COGS accuracy
+  sellingPrice        Decimal         @map("selling_price") // Default selling price
+  minSellingPrice     Decimal?        @map("min_selling_price") // Floor price (prevent losses)
+  wholesalePrice      Decimal?        @map("wholesale_price") // Bulk discount price
+  taxRate             Decimal         @default(16) @map("tax_rate") // VAT rate (16% default for Kenya)
+  isTaxInclusive      Boolean         @default(true) @map("is_tax_inclusive") // Price includes VAT?
+  
+  // ========== STOCK LEVELS ==========
+  quantity            Decimal         @default(0) // Current stock on hand
+  reservedQty         Decimal         @default(0) @map("reserved_qty") // Reserved for pending orders
+  reorderLevel        Decimal?        @map("reorder_level") // Alert when stock falls below
+  reorderQuantity     Decimal?        @map("reorder_quantity") // Suggested reorder amount
+  maxStockLevel       Decimal?        @map("max_stock_level") // Prevent over-ordering
+  
+  // ========== ACCOUNTING LINKS ==========
+  assetAccountId      Int             @map("asset_account_id") // Inventory Asset (1200)
+  cogsAccountId       Int             @map("cogs_account_id")  // Cost of Goods Sold (5000)
+  incomeAccountId     Int?            @map("income_account_id") // Sales Revenue (4100)
+  
+  // ========== METADATA ==========
+  isActive            Boolean         @default(true) @map("is_active")
+  isSellable          Boolean         @default(true) @map("is_sellable") // Can be sold
+  isPurchasable       Boolean         @default(true) @map("is_purchasable") // Can be purchased
+  notes               String?         // Internal notes
+  metadata            Json?           // Flexible: Dimensions, Weight, Warranty, etc.
+  createdById         Int?            @map("created_by_id")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+  
+  // ========== RELATIONS ==========
+  tenant              Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  movements           StockMovement[]
+  purchaseItems       PurchaseItem[]
+  invoiceItems        InvoiceItem[]
+  valuationHistory    InventoryValuation[] // Track cost changes over time
   
   @@unique([tenantId, sku])
+  @@unique([tenantId, barcode])
   @@index([tenantId])
+  @@index([productType])
+  @@index([category])
+  @@index([isActive])
   @@map("inventory_items")
 }
 
-// Stock Movements
+// Inventory Valuation History - Track cost changes over time
+model InventoryValuation {
+  id              Int           @id @default(autoincrement())
+  itemId          Int           @map("item_id")
+  date            DateTime      @default(now())
+  qtyBefore       Decimal       @map("qty_before")
+  qtyAfter        Decimal       @map("qty_after")
+  costBefore      Decimal       @map("cost_before") // WAC before transaction
+  costAfter       Decimal       @map("cost_after")  // WAC after transaction
+  transactionType String        @map("transaction_type") // "PURCHASE", "SALE", "ADJUSTMENT"
+  reference       String?       // Purchase/Invoice ID
+  notes           String?
+  createdAt       DateTime      @default(now()) @map("created_at")
+  
+  item            InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  
+  @@index([itemId])
+  @@index([date])
+  @@map("inventory_valuations")
+}
+
+// Stock Movements - Enhanced Audit Trail
 model StockMovement {
   id              Int          @id @default(autoincrement())
   tenantId        Int          @map("tenant_id")
   itemId          Int          @map("item_id")
+  
+  // Movement Details
   type            MovementType
-  quantity        Decimal
-  unitCost        Decimal?     @map("unit_cost")
-  reference       String?      // Purchase ID, Sale ID, Adjustment ID
+  reason          MovementReason? // Specific reason for the movement
+  quantity        Decimal      // Positive for IN, Negative for OUT
+  
+  // Cost Tracking
+  unitCost        Decimal?     @map("unit_cost") // Cost at time of movement
+  totalValue      Decimal?     @map("total_value") // quantity × unitCost
+  wacBefore       Decimal?     @map("wac_before") // Weighted Avg Cost before
+  wacAfter        Decimal?     @map("wac_after")  // Weighted Avg Cost after
+  
+  // Running Balance (for audit trail)
+  qtyBefore       Decimal?     @map("qty_before") // Stock level before movement
+  qtyAfter        Decimal?     @map("qty_after")  // Stock level after movement
+  
+  // Source Reference
+  reference       String?      // Generic reference
+  sourceType      String?      @map("source_type") // "PURCHASE", "INVOICE", "ADJUSTMENT", "OPENING"
+  sourceId        Int?         @map("source_id") // ID of the source document
+  
+  // Metadata
   date            DateTime     @default(now()) @map("date")
   notes           String?
   journalId       Int?         @map("journal_id")
   createdById     Int?         @map("created_by_id")
+  createdAt       DateTime     @default(now()) @map("created_at")
   
+  // Relations
   tenant          Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   item            InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
   journal         Journal?     @relation(fields: [journalId], references: [id])
@@ -557,14 +645,34 @@ model StockMovement {
   @@index([tenantId])
   @@index([itemId])
   @@index([date])
+  @@index([sourceType, sourceId])
   @@map("stock_movements")
 }
 
 enum MovementType {
-  IN          // Stock received (purchase, return)
+  IN          // Stock received (purchase, return from customer)
   OUT         // Stock sold or used
-  ADJUSTMENT  // Manual adjustment
-  TRANSFER    // Transfer between locations
+  ADJUSTMENT  // Manual count adjustment
+  TRANSFER    // Transfer between locations/warehouses
+  RETURN      // Return to supplier
+}
+
+enum MovementReason {
+  PURCHASE          // Received from supplier
+  SALE              // Sold to customer
+  CUSTOMER_RETURN   // Customer returned goods
+  SUPPLIER_RETURN   // Returned to supplier
+  DAMAGED           // Damaged/broken goods
+  EXPIRED           // Expired goods
+  THEFT             // Stolen goods
+  LOST              // Lost/missing
+  FOUND             // Found (positive adjustment)
+  COUNT_ADJUSTMENT  // Physical count variance
+  OPENING_STOCK     // Initial stock entry
+  PRODUCTION        // Used in production
+  SAMPLE            // Given as sample
+  TRANSFER_IN       // Received from another location
+  TRANSFER_OUT      // Sent to another location
 }
 
 // Bank Transactions (Deposits, Cheques, Transfers)

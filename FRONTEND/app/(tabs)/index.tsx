@@ -257,6 +257,13 @@ export default function HomeScreen() {
               <Text style={styles.actionLabel}>Assets</Text>
             </TouchableOpacity>
 
+            {/* 10. Inventory */}
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/inventory' as any)}>
+              <View style={[styles.actionIcon, { backgroundColor: '#fffbe6' }]}>
+                <Ionicons name="cube-outline" size={24} color="#d4b106" />
+              </View>
+              <Text style={styles.actionLabel}>Inventory</Text>
+            </TouchableOpacity>
           </View>
         </View>
 

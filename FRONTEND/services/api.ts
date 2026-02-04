@@ -304,6 +304,37 @@ class ApiService {
     }
   }
 
+  // Convenience methods
+  public async get<T = any>(endpoint: string, params?: any): Promise<T> {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    const url = `${endpoint}${query}`;
+    return this.request<T>(url);
+  }
+
+  public async post<T = any>(endpoint: string, data?: any): Promise<T> {
+    const isFormData = data instanceof FormData;
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      headers: isFormData ? {} : { 'Content-Type': 'application/json' },
+      body: (isFormData ? data : JSON.stringify(data)) as any,
+    });
+  }
+
+  public async put<T = any>(endpoint: string, data?: any): Promise<T> {
+    const isFormData = data instanceof FormData;
+    return this.request<T>(endpoint, {
+      method: 'PUT',
+      headers: isFormData ? {} : { 'Content-Type': 'application/json' },
+      body: (isFormData ? data : JSON.stringify(data)) as any,
+    });
+  }
+
+  public async delete<T = any>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'DELETE',
+    });
+  }
+
   // Authentication endpoints
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     const response = await this.request<AuthResponse>('/auth/login', {

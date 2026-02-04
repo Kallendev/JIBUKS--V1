@@ -929,6 +929,85 @@ export async function seedFamilyPaymentMethods(tenantId) {
 }
 
 // ============================================
+// CATEGORIES TEMPLATE
+// ============================================
+
+/**
+ * Standard Family Categories Template
+ */
+const FAMILY_CATEGORIES_TEMPLATE = [
+    // Income
+    { name: 'Salary', type: 'income', icon: 'wallet', color: '#10B981' },
+    { name: 'Business', type: 'income', icon: 'briefcase', color: '#3B82F6' },
+    { name: 'Investment', type: 'income', icon: 'trending-up', color: '#8B5CF6' },
+    { name: 'Gift', type: 'income', icon: 'gift', color: '#EC4899' },
+    { name: 'Rental', type: 'income', icon: 'home', color: '#F59E0B' },
+    { name: 'Other Income', type: 'income', icon: 'cash', color: '#9CA3AF' },
+
+    // Expense
+    { name: 'Food', type: 'expense', icon: 'cake', color: '#EF4444' },
+    { name: 'Groceries', type: 'expense', icon: 'shopping-cart', color: '#F87171' },
+    { name: 'Transport', type: 'expense', icon: 'truck', color: '#F59E0B' },
+    { name: 'Housing', type: 'expense', icon: 'home', color: '#3B82F6' },
+    { name: 'Rent', type: 'expense', icon: 'key', color: '#60A5FA' },
+    { name: 'Utilities', type: 'expense', icon: 'lightning-bolt', color: '#FBBF24' },
+    { name: 'Healthcare', type: 'expense', icon: 'heart', color: '#EF4444' },
+    { name: 'Education', type: 'expense', icon: 'book-open', color: '#8B5CF6' },
+    { name: 'Entertainment', type: 'expense', icon: 'film', color: '#EC4899' },
+    { name: 'Shopping', type: 'expense', icon: 'shopping-bag', color: '#DB2777' },
+    { name: 'Communication', type: 'expense', icon: 'phone', color: '#10B981' },
+    { name: 'Insurance', type: 'expense', icon: 'shield-check', color: '#6B7280' },
+    { name: 'Donations', type: 'expense', icon: 'heart', color: '#EC4899' },
+    { name: 'Subscriptions', type: 'expense', icon: 'calendar', color: '#6366F1' },
+    { name: 'Personal Care', type: 'expense', icon: 'user', color: '#F472B6' },
+    { name: 'Pet Care', type: 'expense', icon: 'emoji-happy', color: '#A5F3FC' },
+    { name: 'Childcare', type: 'expense', icon: 'users', color: '#FCD34D' },
+    { name: 'Gym', type: 'expense', icon: 'lightning-bolt', color: '#EF4444' },
+    { name: 'Other Expenses', type: 'expense', icon: 'dots-horizontal', color: '#9CA3AF' },
+];
+
+/**
+ * Seeds categories for a new family tenant
+ * Called automatically when a new family is created
+ * 
+ * @param {number} tenantId - The tenant ID to seed categories for
+ */
+export async function seedFamilyCategories(tenantId) {
+    try {
+        // Check if categories already exist
+        const existingCategories = await prisma.category.count({
+            where: { tenantId }
+        });
+
+        if (existingCategories > 0) {
+            console.log(`[AccountingService] Tenant ${tenantId} already has ${existingCategories} categories, skipping seed`);
+            return;
+        }
+
+        // Create all categories from template
+        const categoriesToCreate = FAMILY_CATEGORIES_TEMPLATE.map(cat => ({
+            tenantId,
+            name: cat.name,
+            type: cat.type,
+            icon: cat.icon,
+            color: cat.color,
+        }));
+
+        await prisma.category.createMany({
+            data: categoriesToCreate,
+            skipDuplicates: true
+        });
+
+        console.log(`[AccountingService] Seeded ${categoriesToCreate.length} categories for tenant ${tenantId}`);
+
+        return categoriesToCreate.length;
+    } catch (error) {
+        console.error('[AccountingService] Error seeding categories:', error);
+        throw error;
+    }
+}
+
+// ============================================
 // ACCOUNT MAPPING SERVICE
 // ============================================
 

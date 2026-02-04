@@ -197,8 +197,11 @@ export default function BusinessDashboardScreen() {
                         <GridItem emoji="💰" label="Expenses" onPress={() => router.push('/expenses')} />
                     </View>
                     <View style={styles.gridRow}>
+                        <GridItem emoji="📦" label="Inventory" onPress={() => router.push('/inventory' as any)} />
                         <GridItem emoji="📈" label="Reports" onPress={() => router.push('/reports')} />
                         <GridItem emoji="📥" label="Income" onPress={() => router.push('/income')} />
+                    </View>
+                    <View style={styles.gridRow}>
                         <GridItem emoji="⋮" label="MORE" onPress={() => router.push('/business-tabs/more-business')} />
                     </View>
                 </View>
