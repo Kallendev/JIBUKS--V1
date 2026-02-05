@@ -525,31 +525,46 @@ class ApiService {
   }
 
   // Inventory
-  async getInventory(params?: { active?: boolean; lowStock?: boolean }): Promise<any[]> {
+  async getInventory(params?: { lowStock?: boolean; search?: string; page?: number; limit?: number; type?: string; category?: string }): Promise<any[]> {
     const query = new URLSearchParams();
-    if (params?.active !== undefined) query.append('active', String(params.active));
     if (params?.lowStock !== undefined) query.append('lowStock', String(params.lowStock));
+    if (params?.search) query.append('search', params.search);
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.limit) query.append('limit', String(params.limit));
+    if (params?.type) query.append('type', params.type);
+    if (params?.category) query.append('category', params.category);
     const suffix = query.toString() ? `?${query.toString()}` : '';
-    return this.request(`/inventory${suffix}`);
+
+    // Backend route: GET /api/inventory/products
+    const res = await this.request(`/inventory/products${suffix}`);
+    // Normalise shape so callers can keep using a plain array
+    if (res && Array.isArray((res as any).data)) {
+      return (res as any).data;
+    }
+    return Array.isArray(res) ? res : [];
   }
 
   async getInventoryItem(id: number): Promise<any> {
-    return this.request(`/inventory/${id}`);
+    // Backend route: GET /api/inventory/products/:id
+    return this.request(`/inventory/products/${id}`);
   }
 
   async createInventoryItem(data: any): Promise<any> {
-    return this.request('/inventory', {
+    // Backend route: POST /api/inventory/products
+    return this.request('/inventory/products', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
+  // Inventory valuation is not yet implemented server-side; keep method for future use
   async getInventoryValuation(): Promise<any> {
     return this.request('/inventory/valuation/current');
   }
 
   async createStockAdjustment(data: any): Promise<any> {
-    return this.request('/inventory/adjustment', {
+    // Backend route: POST /api/inventory/adjust
+    return this.request('/inventory/adjust', {
       method: 'POST',
       body: JSON.stringify(data),
     });

@@ -59,7 +59,8 @@ export default function CreateInvoiceScreen() {
     const [invoiceNumber, setInvoiceNumber] = useState('');
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
     const [dueDate, setDueDate] = useState('');
-    const [notes, setNotes] = useState('');
+    const [customerMessage, setCustomerMessage] = useState('');
+    const [memo, setMemo] = useState('');
     const [items, setItems] = useState([
         { description: '', quantity: '', unitPrice: '', accountId: '', inventoryItemId: '' }
     ]);
@@ -164,7 +165,21 @@ export default function CreateInvoiceScreen() {
         return subtotal + taxAmount - discountAmount;
     };
 
-    const handleSubmit = async () => {
+    const resetForm = () => {
+        setInvoiceNumber('');
+        const today = new Date().toISOString().split('T')[0];
+        setInvoiceDate(today);
+        setDueDate('');
+        setItems([{ description: '', quantity: '', unitPrice: '', accountId: '', inventoryItemId: '' }]);
+        setTax(String(DEFAULT_TAX_PERCENT));
+        setDiscount('0');
+        setCustomerMessage('');
+        setMemo('');
+    };
+
+    type SubmitMode = 'save' | 'saveAndNew' | 'print';
+
+    const submitInvoice = async (mode: SubmitMode) => {
         // Validation
         if (!customerId) {
             Alert.alert('Error', 'Please select a customer');
@@ -183,6 +198,15 @@ export default function CreateInvoiceScreen() {
         try {
             setLoading(true);
 
+            const notesParts: string[] = [];
+            if (customerMessage.trim()) {
+                notesParts.push(`Message to customer: ${customerMessage.trim()}`);
+            }
+            if (memo.trim()) {
+                notesParts.push(`Memo: ${memo.trim()}`);
+            }
+            const combinedNotes = notesParts.join('\n\n');
+
             const invoiceData = {
                 customerId: parseInt(customerId),
                 invoiceNumber: invoiceNumber || undefined,
@@ -197,15 +221,22 @@ export default function CreateInvoiceScreen() {
                 })),
                 tax: parseFloat(tax) || 0,
                 discount: parseFloat(discount) || 0,
-                notes: notes || undefined,
+                notes: combinedNotes || undefined,
                 status: 'UNPAID'
             };
 
-            await apiService.createInvoice(invoiceData);
+            const created = await apiService.createInvoice(invoiceData);
 
-            Alert.alert('Success', 'Invoice created successfully', [
-                { text: 'OK', onPress: () => router.back() }
-            ]);
+            if (mode === 'saveAndNew') {
+                Alert.alert('Success', 'Invoice created successfully');
+                resetForm();
+            } else if (mode === 'print') {
+                Alert.alert('Saved', 'Invoice created. Print & share will be added in the next phase.');
+            } else {
+                Alert.alert('Success', 'Invoice created successfully', [
+                    { text: 'OK', onPress: () => router.back() }
+                ]);
+            }
         } catch (error) {
             console.error('Error creating invoice:', error);
             Alert.alert('Error', (error as any).error || 'Failed to create invoice');
@@ -214,12 +245,19 @@ export default function CreateInvoiceScreen() {
         }
     };
 
+    const handleSave = () => submitInvoice('save');
+    const handleSaveAndNew = () => submitInvoice('saveAndNew');
+    const handlePrintShare = () => submitInvoice('print');
+    const handleClear = () => {
+        resetForm();
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="#1f2937" />
+                    <Ionicons name="arrow-back" size={24} color="#f59e0b" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Create Invoice</Text>
                 <View style={{ width: 40 }} />
@@ -411,11 +449,21 @@ export default function CreateInvoiceScreen() {
 
                 {/* Totals */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Totals</Text>
+                    <Text style={styles.sectionTitle}>Discount &amp; Tax</Text>
 
                     <View style={styles.row}>
                         <View style={{ flex: 1, marginRight: 8 }}>
-                            <Text style={styles.label}>Tax (e.g. VAT % or amount)</Text>
+                            <Text style={styles.label}>Discount</Text>
+                            <TextInput
+                                style={styles.inputSmall}
+                                placeholder="0"
+                                value={discount}
+                                onChangeText={setDiscount}
+                                keyboardType="decimal-pad"
+                            />
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 8 }}>
+                            <Text style={styles.label}>VAT</Text>
                             <TextInput
                                 style={styles.inputSmall}
                                 placeholder="0"
@@ -425,16 +473,6 @@ export default function CreateInvoiceScreen() {
                             />
                             <Text style={styles.hint}>Default {DEFAULT_TAX_PERCENT}%. Editable per invoice.</Text>
                         </View>
-                        <View style={{ flex: 1, marginLeft: 8 }}>
-                            <Text style={styles.label}>Discount</Text>
-                            <TextInput
-                                style={styles.inputSmall}
-                                placeholder="0.00"
-                                value={discount}
-                                onChangeText={setDiscount}
-                                keyboardType="decimal-pad"
-                            />
-                        </View>
                     </View>
 
                     <View style={styles.totalCard}>
@@ -443,50 +481,83 @@ export default function CreateInvoiceScreen() {
                             <Text style={styles.totalValue}>KES {calculateSubtotal().toLocaleString()}</Text>
                         </View>
                         <View style={styles.totalRow}>
-                            <Text style={styles.totalLabel}>Tax:</Text>
-                            <Text style={styles.totalValue}>KES {(parseFloat(tax) || 0).toLocaleString()}</Text>
+                            <Text style={styles.totalLabel}>Discount:</Text>
+                            <Text style={styles.totalValue}>KES {(parseFloat(discount) || 0).toLocaleString()}</Text>
                         </View>
                         <View style={styles.totalRow}>
-                            <Text style={styles.totalLabel}>Discount:</Text>
-                            <Text style={styles.totalValue}>- KES {(parseFloat(discount) || 0).toLocaleString()}</Text>
+                            <Text style={styles.totalLabel}>VAT:</Text>
+                            <Text style={styles.totalValue}>KES {(parseFloat(tax) || 0).toLocaleString()}</Text>
                         </View>
                         <View style={[styles.totalRow, styles.grandTotal]}>
-                            <Text style={styles.grandTotalLabel}>Total:</Text>
+                            <Text style={styles.grandTotalLabel}>Invoiced Total:</Text>
                             <Text style={styles.grandTotalValue}>KES {calculateTotal().toLocaleString()}</Text>
                         </View>
                     </View>
                 </View>
 
-                {/* Notes */}
+                {/* Message & Memo */}
                 <View style={styles.section}>
-                    <Text style={styles.label}>Notes</Text>
+                    <Text style={styles.label}>Message to Customer</Text>
                     <TextInput
                         style={styles.textArea}
-                        placeholder="Additional notes..."
-                        value={notes}
-                        onChangeText={setNotes}
+                        placeholder="This will appear on the invoice..."
+                        value={customerMessage}
+                        onChangeText={setCustomerMessage}
+                        multiline
+                        numberOfLines={3}
+                    />
+
+                    <Text style={styles.label}>Memo</Text>
+                    <TextInput
+                        style={styles.textArea}
+                        placeholder="Internal notes (not shown to customer)"
+                        value={memo}
+                        onChangeText={setMemo}
                         multiline
                         numberOfLines={3}
                     />
                 </View>
 
-                {/* Submit Button */}
-                <TouchableOpacity
-                    style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-                    onPress={handleSubmit}
-                    disabled={loading}
-                >
-                    {loading ? (
-                        <ActivityIndicator color="#fff" />
-                    ) : (
-                        <>
-                            <Ionicons name="checkmark-circle" size={24} color="#fff" />
-                            <Text style={styles.submitButtonText}>Create Invoice</Text>
-                        </>
-                    )}
-                </TouchableOpacity>
+                {/* Footer Buttons */}
+                <View style={styles.footerButtonsRow}>
+                    <TouchableOpacity
+                        style={[styles.footerButton, styles.footerButtonClear]}
+                        onPress={handleClear}
+                        disabled={loading}
+                    >
+                        <Text style={styles.footerButtonClearText}>Clear</Text>
+                    </TouchableOpacity>
 
-                <View style={{ height: 40 }} />
+                    <TouchableOpacity
+                        style={[styles.footerButton, styles.footerButtonOutline]}
+                        onPress={handleSaveAndNew}
+                        disabled={loading}
+                    >
+                        <Text style={styles.footerButtonOutlineText}>Save &amp; New</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.footerButton, styles.footerButtonOutline]}
+                        onPress={handlePrintShare}
+                        disabled={loading}
+                    >
+                        <Text style={styles.footerButtonOutlineText}>Print/Share</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.footerButton, styles.footerButtonPrimary, loading && styles.submitButtonDisabled]}
+                        onPress={handleSave}
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <ActivityIndicator color="#fff" />
+                        ) : (
+                            <Text style={styles.footerButtonPrimaryText}>Save</Text>
+                        )}
+                    </TouchableOpacity>
+                </View>
+
+                <View style={{ height: 32 }} />
             </ScrollView>
         </SafeAreaView>
     );
@@ -495,7 +566,7 @@ export default function CreateInvoiceScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f9fafb',
+        backgroundColor: '#112b7a',
     },
     header: {
         flexDirection: 'row',
@@ -503,30 +574,30 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 20,
         paddingVertical: 16,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb',
+        backgroundColor: '#112b7a',
     },
     backButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#f3f4f6',
+        backgroundColor: '#0b1b4f',
         alignItems: 'center',
         justifyContent: 'center',
     },
     headerTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#1f2937',
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#fbbf24',
     },
     scrollView: {
         flex: 1,
     },
     section: {
         padding: 16,
-        backgroundColor: '#fff',
+        backgroundColor: '#ffffff',
         marginBottom: 8,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -600,7 +671,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#1f2937',
         backgroundColor: 'transparent',
-        border: 'none',
     },
     row: {
         flexDirection: 'row',
@@ -742,5 +812,49 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         color: '#fff',
+    },
+    footerButtonsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        marginTop: 16,
+    },
+    footerButton: {
+        height: 46,
+        borderRadius: 23,
+        paddingHorizontal: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: 70,
+        marginHorizontal: 4,
+    },
+    footerButtonClear: {
+        backgroundColor: '#e5e7eb',
+        borderWidth: 1,
+        borderColor: '#9ca3af',
+    },
+    footerButtonClearText: {
+        color: '#111827',
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    footerButtonOutline: {
+        backgroundColor: '#f9fafb',
+        borderWidth: 2,
+        borderColor: '#f59e0b',
+    },
+    footerButtonOutlineText: {
+        color: '#1d4ed8',
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    footerButtonPrimary: {
+        backgroundColor: '#1d4ed8',
+    },
+    footerButtonPrimaryText: {
+        color: '#ffffff',
+        fontSize: 14,
+        fontWeight: '700',
     },
 });
