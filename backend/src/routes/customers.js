@@ -16,12 +16,12 @@ router.get('/', async (req, res) => {
         const { active, search, businessType, limit = 50, offset = 0 } = req.query;
 
         const where = { tenantId };
-        
+
         // Filter by active status
         if (active !== undefined) {
             where.isActive = active === 'true';
         }
-        
+
         // Search functionality
         if (search) {
             where.OR = [
@@ -32,20 +32,23 @@ router.get('/', async (req, res) => {
                 { taxNumber: { contains: search, mode: 'insensitive' } },
             ];
         }
-        
+
         // Filter by business type
         if (businessType) {
             where.businessType = businessType;
         }
 
+        const take = parseInt(limit) || 50;
+        const skip = parseInt(offset) || 0;
+
         const customers = await prisma.customer.findMany({
             where,
             orderBy: [
-                { lastSaleDate: { sort: 'desc', nulls: 'last' } },
+                { lastSaleDate: 'desc' },
                 { name: 'asc' }
             ],
-            take: parseInt(limit),
-            skip: parseInt(offset),
+            take,
+            skip,
             include: {
                 invoices: {
                     select: {
@@ -54,7 +57,7 @@ router.get('/', async (req, res) => {
                         amountPaid: true,
                         status: true,
                         invoiceDate: true,
-                        dueDate: true,
+                        dueDate: true, // Make sure this is selected
                     },
                 },
             },
@@ -62,14 +65,14 @@ router.get('/', async (req, res) => {
 
         // Calculate customer statistics and aging
         const customersWithStats = customers.map(customer => {
-            const invoices = customer.invoices;
+            const invoices = customer.invoices || [];
             const currentDate = new Date();
-            
+
             // Calculate total balance
             const balance = invoices.reduce((sum, inv) =>
-                sum + (Number(inv.total) - Number(inv.amountPaid)), 0
+                sum + (Number(inv.total || 0) - Number(inv.amountPaid || 0)), 0
             );
-            
+
             // Calculate aging buckets
             const aging = {
                 current: 0,    // 0-30 days
@@ -77,12 +80,14 @@ router.get('/', async (req, res) => {
                 sixtyDays: 0,  // 61-90 days
                 ninetyDays: 0, // 90+ days
             };
-            
+
             invoices.forEach(inv => {
+                if (!inv.dueDate) return;
+
                 const dueDate = new Date(inv.dueDate);
                 const daysOverdue = Math.floor((currentDate - dueDate) / (1000 * 60 * 60 * 24));
-                const outstandingAmount = Number(inv.total) - Number(inv.amountPaid);
-                
+                const outstandingAmount = Number(inv.total || 0) - Number(inv.amountPaid || 0);
+
                 if (outstandingAmount > 0) {
                     if (daysOverdue <= 30) {
                         aging.current += outstandingAmount;
@@ -95,11 +100,12 @@ router.get('/', async (req, res) => {
                     }
                 }
             });
-            
+
             // Calculate stats
             const totalInvoices = invoices.length;
             const paidInvoices = invoices.filter(inv => inv.status === 'PAID').length;
             const overdue = invoices.filter(inv => {
+                if (!inv.dueDate) return false;
                 const dueDate = new Date(inv.dueDate);
                 return dueDate < currentDate && inv.status !== 'PAID';
             }).length;
@@ -112,7 +118,7 @@ router.get('/', async (req, res) => {
                     totalInvoices,
                     paidInvoices,
                     overdueInvoices: overdue,
-                    avgDaysToPayment: null, // TODO: Calculate if needed
+                    avgDaysToPayment: null,
                 },
                 invoices: undefined, // Remove detailed invoices from list response
             };
@@ -125,14 +131,14 @@ router.get('/', async (req, res) => {
             customers: customersWithStats,
             pagination: {
                 total: totalCount,
-                limit: parseInt(limit),
-                offset: parseInt(offset),
-                hasMore: parseInt(offset) + parseInt(limit) < totalCount,
+                limit: take,
+                offset: skip,
+                hasMore: skip + take < totalCount,
             }
         });
     } catch (error) {
         console.error('Error fetching customers:', error);
-        res.status(500).json({ error: 'Failed to fetch customers' });
+        res.status(500).json({ error: error.message || 'Failed to fetch customers' });
     }
 });
 
@@ -471,7 +477,7 @@ router.get('/:id/balance', async (req, res) => {
         }
 
         const currentDate = new Date();
-        
+
         // Calculate aging buckets
         const aging = {
             current: 0,    // 0-30 days
@@ -486,10 +492,10 @@ router.get('/:id/balance', async (req, res) => {
             const outstandingAmount = Number(inv.total) - Number(inv.amountPaid);
             if (outstandingAmount > 0) {
                 totalBalance += outstandingAmount;
-                
+
                 const dueDate = new Date(inv.dueDate);
                 const daysOverdue = Math.floor((currentDate - dueDate) / (1000 * 60 * 60 * 24));
-                
+
                 if (daysOverdue <= 30) {
                     aging.current += outstandingAmount;
                 } else if (daysOverdue <= 60) {
@@ -536,7 +542,7 @@ router.get('/:id/transactions', async (req, res) => {
 
         // Get invoices and payments
         const invoices = await prisma.invoice.findMany({
-            where: { 
+            where: {
                 customerId,
                 tenantId,
                 ...(type === 'invoices' ? {} : {})
@@ -553,7 +559,7 @@ router.get('/:id/transactions', async (req, res) => {
 
         // Format transactions
         const transactions = [];
-        
+
         invoices.forEach(invoice => {
             // Add invoice transaction
             if (!type || type === 'invoices') {
@@ -643,7 +649,7 @@ router.get('/:id/analytics', async (req, res) => {
         // Calculate date range based on period
         const endDate = new Date();
         let startDate = new Date();
-        
+
         switch (period) {
             case '3months':
                 startDate.setMonth(startDate.getMonth() - 3);
@@ -680,7 +686,7 @@ router.get('/:id/analytics', async (req, res) => {
         const totalPaid = invoices.reduce((sum, inv) => sum + Number(inv.amountPaid), 0);
         const totalInvoices = invoices.length;
         const paidInvoices = invoices.filter(inv => inv.status === 'PAID').length;
-        
+
         // Monthly breakdown
         const monthlyData = {};
         invoices.forEach(invoice => {
@@ -715,7 +721,7 @@ router.get('/:id/analytics', async (req, res) => {
             monthlyData: Object.entries(monthlyData)
                 .map(([month, data]) => ({ month, ...data }))
                 .sort((a, b) => a.month.localeCompare(b.month)),
-            creditUtilization: customer.creditLimit ? 
+            creditUtilization: customer.creditLimit ?
                 Math.min((customer.balance / Number(customer.creditLimit)) * 100, 100) : null,
         });
     } catch (error) {

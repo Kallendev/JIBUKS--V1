@@ -595,9 +595,9 @@ class ApiService {
   }
 
   // Customers
-  async getCustomers(params?: { 
-    active?: boolean; 
-    search?: string; 
+  async getCustomers(params?: {
+    active?: boolean;
+    search?: string;
     businessType?: string;
     limit?: number;
     offset?: number;
@@ -634,9 +634,9 @@ class ApiService {
     return this.request(`/customers/${id}/balance`);
   }
 
-  async getCustomerTransactions(id: number, params?: { 
-    limit?: number; 
-    offset?: number; 
+  async getCustomerTransactions(id: number, params?: {
+    limit?: number;
+    offset?: number;
     type?: 'invoices' | 'payments';
   }): Promise<any> {
     const query = new URLSearchParams();
@@ -1043,6 +1043,23 @@ class ApiService {
 
     return this.request<any>(`/reports/category-analysis${suffix}`);
   }
+
+  async getAccountTransactions(accountId: string | number, params?: {
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+    offset?: number
+  }): Promise<any> {
+    const query = new URLSearchParams();
+    if (params?.startDate) query.append('startDate', params.startDate);
+    if (params?.endDate) query.append('endDate', params.endDate);
+    if (params?.limit) query.append('limit', String(params.limit));
+    if (params?.offset) query.append('offset', String(params.offset));
+
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return this.request<any>(`/reports/account-transactions/${accountId}${suffix}`);
+  }
+
 
   // ============================================
   // CHEQUE MANAGEMENT - Revolutionary Feature

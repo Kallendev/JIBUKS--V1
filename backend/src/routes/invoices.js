@@ -6,6 +6,7 @@ import {
     getDefaultRevenueAccountId,
     getDefaultPaymentAccountId,
 } from '../services/accountingService.js';
+import * as inventoryAccountingService from '../services/inventoryAccountingService.js';
 
 const router = express.Router();
 
@@ -21,7 +22,13 @@ router.get('/', async (req, res) => {
         const { status, customerId } = req.query;
 
         const where = { tenantId };
-        if (status) where.status = status;
+        if (status) {
+            if (status.includes(',')) {
+                where.status = { in: status.split(',') };
+            } else {
+                where.status = status;
+            }
+        }
         if (customerId) where.customerId = parseInt(customerId);
 
         const invoices = await prisma.invoice.findMany({
@@ -242,37 +249,47 @@ router.post('/', async (req, res) => {
                 },
             });
 
-            // Update inventory if items are inventory items
-            for (const item of items) {
-                if (item.inventoryItemId) {
-                    const inventoryItem = await tx.inventoryItem.findUnique({
-                        where: { id: parseInt(item.inventoryItemId) },
+            // ============================================
+            // COGS ACCOUNTING - The "Double-Entry Magic"
+            // ============================================
+            // When selling inventory items, we need TWO transactions:
+            // Transaction A (above): Revenue Recognition
+            //   - DR: Accounts Receivable (Customer owes us)
+            //   - CR: Sales Revenue (We earned income)
+            //
+            // Transaction B (here): Cost Recognition - COGS
+            //   - DR: Cost of Goods Sold (Expense increases)
+            //   - CR: Inventory Asset (Asset decreases)
+            //
+            // This ensures the Matching Principle: expenses match the period of revenue
+
+            const inventoryItems = items.filter(item => item.inventoryItemId);
+
+            if (inventoryItems.length > 0) {
+                try {
+                    const cogsResult = await inventoryAccountingService.processInventorySale({
+                        tenantId,
+                        userId,
+                        invoiceId: invoice.id,
+                        invoiceNumber: invoiceNumber,
+                        items: inventoryItems.map(item => ({
+                            inventoryItemId: item.inventoryItemId,
+                            quantity: parseFloat(item.quantity),
+                            sellingPrice: parseFloat(item.unitPrice)
+                        })),
+                        date: new Date(invoiceDate),
                     });
 
-                    if (inventoryItem) {
-                        await tx.inventoryItem.update({
-                            where: { id: parseInt(item.inventoryItemId) },
-                            data: {
-                                quantity: {
-                                    decrement: parseFloat(item.quantity),
-                                },
-                            },
-                        });
-
-                        await tx.stockMovement.create({
-                            data: {
-                                tenantId,
-                                inventoryItemId: parseInt(item.inventoryItemId),
-                                type: 'OUT',
-                                quantity: parseFloat(item.quantity),
-                                unitCost: inventoryItem.costPrice,
-                                totalCost: parseFloat(item.quantity) * inventoryItem.costPrice,
-                                date: new Date(invoiceDate),
-                                reference: `Invoice ${invoiceNumber}`,
-                                notes: `Sold to ${invoice.customer.name}`,
-                            },
-                        });
-                    }
+                    console.log(`[Invoices] COGS processed for ${invoiceNumber}:`, {
+                        revenue: cogsResult.summary?.totalRevenue || 0,
+                        cogs: cogsResult.summary?.totalCOGS || 0,
+                        grossProfit: cogsResult.summary?.grossProfit || 0,
+                        margin: `${cogsResult.summary?.grossMargin || 0}%`
+                    });
+                } catch (cogsError) {
+                    console.error('[Invoices] COGS accounting error:', cogsError);
+                    // Don't fail the invoice - log and continue
+                    // Admin should check inventory setup
                 }
             }
 

@@ -151,20 +151,20 @@ export const FAMILY_COA_TEMPLATE = [
     // ----------------------------------------
     // INVENTORY (1200-1299)
     // ----------------------------------------
-    { code: '1200', name: 'Inventory', type: 'ASSET', description: 'Stock for sale - Control', isSystem: true, isContra: false, subtype: 'inventory', isParent: true },
+    { code: '1200', name: 'Inventory (Stock on Hand)', type: 'ASSET', description: 'Total value of all stock available for sale', isSystem: true, isContra: false, subtype: 'inventory', isParent: true },
 
     // Merchandise Inventory
-    { code: '1201', name: 'Merchandise Inventory', type: 'ASSET', description: 'Goods purchased for resale', isSystem: true, isContra: false, subtype: 'inventory', parentCode: '1200' },
-    { code: '1202', name: 'Finished Goods', type: 'ASSET', description: 'Manufactured products ready for sale', isSystem: false, isContra: false, subtype: 'inventory', parentCode: '1200' },
-    { code: '1203', name: 'Work in Progress (WIP)', type: 'ASSET', description: 'Partially completed products', isSystem: false, isContra: false, subtype: 'inventory_wip', parentCode: '1200' },
-    { code: '1204', name: 'Raw Materials', type: 'ASSET', description: 'Materials for manufacturing', isSystem: false, isContra: false, subtype: 'inventory_raw', parentCode: '1200' },
-    { code: '1205', name: 'Packaging Materials', type: 'ASSET', description: 'Boxes, bags, labels', isSystem: false, isContra: false, subtype: 'inventory_supplies', parentCode: '1200' },
-    { code: '1206', name: 'Supplies Inventory', type: 'ASSET', description: 'Office/shop supplies for use', isSystem: false, isContra: false, subtype: 'inventory_supplies', parentCode: '1200' },
-    { code: '1207', name: 'Fuel Inventory', type: 'ASSET', description: 'Fuel stock (petrol stations)', isSystem: false, isContra: false, subtype: 'inventory', parentCode: '1200' },
-    { code: '1208', name: 'Spare Parts Inventory', type: 'ASSET', description: 'Auto parts, machine parts', isSystem: false, isContra: false, subtype: 'inventory', parentCode: '1200' },
-    { code: '1209', name: 'Food & Beverage Inventory', type: 'ASSET', description: 'Restaurant/bar stock', isSystem: false, isContra: false, subtype: 'inventory', parentCode: '1200' },
-    { code: '1210', name: 'Inventory in Transit', type: 'ASSET', description: 'Goods shipped, not received', isSystem: false, isContra: false, subtype: 'inventory', parentCode: '1200' },
-    { code: '1220', name: 'Inventory Reserve', type: 'ASSET', description: 'Provision for obsolete stock', isSystem: true, isContra: true, subtype: 'contra_inventory', parentCode: '1200' },
+    { code: '1201', name: 'Stock for Resale', type: 'ASSET', description: 'Goods purchased for resale - Main inventory account', isSystem: true, isContra: false, subtype: 'inventory', parentCode: '1200' },
+    { code: '1202', name: 'Finished Goods (Ready to Sell)', type: 'ASSET', description: 'Manufactured products ready for sale', isSystem: false, isContra: false, subtype: 'inventory', parentCode: '1200' },
+    { code: '1203', name: 'Work in Progress (WIP)', type: 'ASSET', description: 'Partially completed products being manufactured', isSystem: false, isContra: false, subtype: 'inventory_wip', parentCode: '1200' },
+    { code: '1204', name: 'Raw Materials (Production)', type: 'ASSET', description: 'Materials for manufacturing', isSystem: false, isContra: false, subtype: 'inventory_raw', parentCode: '1200' },
+    { code: '1205', name: 'Packaging Materials (Stock)', type: 'ASSET', description: 'Boxes, bags, labels for products', isSystem: false, isContra: false, subtype: 'inventory_supplies', parentCode: '1200' },
+    { code: '1206', name: 'Office Supplies (Stock)', type: 'ASSET', description: 'Office/shop supplies inventory', isSystem: false, isContra: false, subtype: 'inventory_supplies', parentCode: '1200' },
+    { code: '1207', name: 'Fuel Stock (Inventory)', type: 'ASSET', description: 'Fuel stock (petrol stations)', isSystem: false, isContra: false, subtype: 'inventory', parentCode: '1200' },
+    { code: '1208', name: 'Spare Parts (Stock)', type: 'ASSET', description: 'Auto parts, machine parts inventory', isSystem: false, isContra: false, subtype: 'inventory', parentCode: '1200' },
+    { code: '1209', name: 'Food & Beverage Stock', type: 'ASSET', description: 'Restaurant/bar stock inventory', isSystem: false, isContra: false, subtype: 'inventory', parentCode: '1200' },
+    { code: '1210', name: 'Stock in Transit (Incoming)', type: 'ASSET', description: 'Goods shipped, not yet received', isSystem: false, isContra: false, subtype: 'inventory', parentCode: '1200' },
+    { code: '1220', name: 'Inventory Reserve (Provision)', type: 'ASSET', description: 'Provision for obsolete or damaged stock', isSystem: true, isContra: true, subtype: 'contra_inventory', parentCode: '1200' },
 
     // ========================================
     // FIXED ASSETS (1300-1599)
@@ -560,17 +560,18 @@ export const FAMILY_COA_TEMPLATE = [
     // ============================================
     // COST OF GOODS SOLD (5000-5999)
     // Direct costs attributable to the production of goods sold
+    // NOTE: These accounts only recognize expenses when items are SOLD, not purchased
     // ============================================
-    { code: '5000', name: 'Cost of Goods Sold (COGS)', type: 'EXPENSE', description: 'Total direct costs of production', isSystem: true, isContra: false, subtype: 'cogs', isParent: true, systemTag: 'COGS' },
-    { code: '5001', name: 'Cost of Sales - Inventory', type: 'EXPENSE', description: 'Cost of items sold from inventory', isSystem: true, isContra: false, subtype: 'cogs', parentCode: '5000' },
-    { code: '5002', name: 'Purchase Price Variance', type: 'EXPENSE', description: 'Difference in standard vs actual cost', isSystem: false, isContra: false, subtype: 'cogs', parentCode: '5000' },
-    { code: '5003', name: 'Freight & Shipping In', type: 'EXPENSE', description: 'Transport costs for purchasing goods', isSystem: false, isContra: false, subtype: 'cogs', parentCode: '5000' },
-    { code: '5004', name: 'Import Duties & Taxes', type: 'EXPENSE', description: 'Customs duties on inventory', isSystem: false, isContra: false, subtype: 'cogs', parentCode: '5000' },
-    { code: '5005', name: 'Packaging Materials COGS', type: 'EXPENSE', description: 'Packaging for sold products', isSystem: false, isContra: false, subtype: 'cogs', parentCode: '5000' },
-    { code: '5006', name: 'Direct Labor', type: 'EXPENSE', description: 'Wages directly related to production', isSystem: false, isContra: false, subtype: 'cogs', parentCode: '5000' },
-    { code: '5007', name: 'Subcontractor Costs', type: 'EXPENSE', description: 'Outsourced production work', isSystem: false, isContra: false, subtype: 'cogs', parentCode: '5000' },
-    { code: '5008', name: 'Merchant Transaction Fees', type: 'EXPENSE', description: 'Direct payment processing costs (Stripe/PDQ)', isSystem: false, isContra: false, subtype: 'cogs', parentCode: '5000' },
-    { code: '5009', name: 'Sales Commissions', type: 'EXPENSE', description: 'Commissions paid on sales', isSystem: false, isContra: false, subtype: 'cogs', parentCode: '5000' },
+    { code: '5000', name: 'Cost of Goods Sold (COGS)', type: 'EXPENSE', description: 'Total cost of items that were sold (not purchased)', isSystem: true, isContra: false, subtype: 'cogs', isParent: true, systemTag: 'COGS' },
+    { code: '5001', name: 'Cost of Sales (Inventory)', type: 'EXPENSE', description: 'Cost of items sold from stock - Automatic COGS', isSystem: true, isContra: false, subtype: 'cogs', parentCode: '5000' },
+    { code: '5002', name: 'Inventory Cost Adjustments', type: 'EXPENSE', description: 'WAC adjustments and cost corrections', isSystem: false, isContra: false, subtype: 'cogs', parentCode: '5000' },
+    { code: '5003', name: 'Freight & Shipping (Inbound)', type: 'EXPENSE', description: 'Transport costs added to inventory cost', isSystem: false, isContra: false, subtype: 'cogs', parentCode: '5000' },
+    { code: '5004', name: 'Import Duties & Customs', type: 'EXPENSE', description: 'Customs duties added to inventory cost', isSystem: false, isContra: false, subtype: 'cogs', parentCode: '5000' },
+    { code: '5005', name: 'Packaging Costs (COGS)', type: 'EXPENSE', description: 'Packaging for sold products', isSystem: false, isContra: false, subtype: 'cogs', parentCode: '5000' },
+    { code: '5006', name: 'Direct Labor (Production)', type: 'EXPENSE', description: 'Wages directly related to making products', isSystem: false, isContra: false, subtype: 'cogs', parentCode: '5000' },
+    { code: '5007', name: 'Subcontractor Costs (Production)', type: 'EXPENSE', description: 'Outsourced production work', isSystem: false, isContra: false, subtype: 'cogs', parentCode: '5000' },
+    { code: '5008', name: 'Payment Processing Fees (Sales)', type: 'EXPENSE', description: 'Transaction fees on customer payments', isSystem: false, isContra: false, subtype: 'cogs', parentCode: '5000' },
+    { code: '5009', name: 'Sales Commissions Paid', type: 'EXPENSE', description: 'Commissions paid on completed sales', isSystem: false, isContra: false, subtype: 'cogs', parentCode: '5000' },
 
     // ============================================
     // OPERATING EXPENSES (6000-7999)
@@ -664,17 +665,17 @@ export const FAMILY_COA_TEMPLATE = [
     // Non-operating expenses
     // ============================================
     { code: '8000', name: 'Other Expenses', type: 'EXPENSE', description: 'Non-operating expenses', isSystem: true, isContra: false, subtype: 'other_expense', isParent: true },
-    { code: '8010', name: 'Loss on Asset Disposal', type: 'EXPENSE', description: 'Loss when selling asset', isSystem: true, isContra: false, subtype: 'other_expense', parentCode: '8000' },
-    { code: '8020', name: 'Fines & Penalties', type: 'EXPENSE', description: 'KRA/Traffic fines (Not deductible)', isSystem: false, isContra: false, subtype: 'other_expense', parentCode: '8000' },
-    { code: '8030', name: 'Charitable Donations', type: 'EXPENSE', description: 'Donations/CSR', isSystem: false, isContra: false, subtype: 'other_expense', parentCode: '8000' },
-    { code: '8040', name: 'Theft / Loss of Funds', type: 'EXPENSE', description: 'Stolen or lost money', isSystem: false, isContra: false, subtype: 'other_expense', parentCode: '8000' },
+    { code: '8010', name: 'Loss on Asset Sales', type: 'EXPENSE', description: 'Loss when selling assets below book value', isSystem: true, isContra: false, subtype: 'other_expense', parentCode: '8000' },
+    { code: '8020', name: 'Fines & Penalties (Non-Deductible)', type: 'EXPENSE', description: 'KRA/Traffic fines (Not tax deductible)', isSystem: false, isContra: false, subtype: 'other_expense', parentCode: '8000' },
+    { code: '8030', name: 'Charitable Donations & CSR', type: 'EXPENSE', description: 'Donations and Corporate Social Responsibility', isSystem: false, isContra: false, subtype: 'other_expense', parentCode: '8000' },
+    { code: '8040', name: 'Inventory Shrinkage (Loss)', type: 'EXPENSE', description: 'Stock lost to theft, damage, or obsolescence', isSystem: false, isContra: false, subtype: 'other_expense', parentCode: '8000' },
 
     // 4300 - Gain/Loss on Asset Disposal (For Assets Module)
-    { code: '4300', name: 'Gain on Asset Disposal', type: 'INCOME', description: 'Profit from selling assets', isSystem: true, subtype: 'other_income' },
-    { code: '6800', name: 'Loss on Asset Disposal', type: 'EXPENSE', description: 'Loss from selling assets', isSystem: true, subtype: 'other_expense' },
+    { code: '4300', name: 'Gain on Asset Sales', type: 'INCOME', description: 'Profit from selling assets above book value', isSystem: true, subtype: 'other_income' },
+    { code: '6800', name: 'Loss on Asset Sales', type: 'EXPENSE', description: 'Loss from selling assets below book value', isSystem: true, subtype: 'other_expense' },
 
     // Other Standard Business (5000 series for COGS)
-    { code: '5199', name: 'Uncategorized Expense', type: 'EXPENSE', description: 'To be sorted', isSystem: true, subtype: 'operating_expense' },
+    { code: '5199', name: 'Uncategorized Expense', type: 'EXPENSE', description: 'Temporary holding account for expenses to be categorized', isSystem: true, subtype: 'operating_expense' },
 ];
 
 // ============================================
@@ -1685,6 +1686,7 @@ export async function getBalanceSheet(tenantId, asOfDate = new Date()) {
 
         // Formatting Helper
         const formatItem = () => ({
+            id: account.id,
             code: account.code,
             name: account.name,
             amount: balance
@@ -2167,6 +2169,89 @@ export async function disposeAsset(tenantId, userId, assetId, disposalData) {
 
 
 
+/**
+ * Get the main Accounts Receivable account ID for a tenant
+ * @param {number} tenantId
+ * @returns {Promise<string|null>} Account ID or null
+ */
+export async function getAccountsReceivableAccountId(tenantId) {
+    const account = await prisma.account.findFirst({
+        where: {
+            tenantId,
+            systemTag: 'AR' // Using system tag is safer
+        },
+        select: { id: true }
+    });
+
+    if (account) return account.id;
+
+    // Fallback to code 1100 if tag is missing
+    const fallback = await prisma.account.findFirst({
+        where: {
+            tenantId,
+            code: '1100'
+        },
+        select: { id: true }
+    });
+
+    return fallback ? fallback.id : null;
+}
+
+/**
+ * Get default Revenue account ID (Sales Revenue)
+ * @param {number} tenantId
+ * @returns {Promise<string|null>}
+ */
+export async function getDefaultRevenueAccountId(tenantId) {
+    const account = await prisma.account.findFirst({
+        where: {
+            tenantId,
+            code: '4100' // Sales Revenue
+        },
+        select: { id: true }
+    });
+
+    if (account) return account.id;
+
+    // Fallback to any Income account
+    const anyIncome = await prisma.account.findFirst({
+        where: { tenantId, type: 'INCOME' },
+        select: { id: true }
+    });
+
+    return anyIncome ? anyIncome.id : null;
+}
+
+/**
+ * Get default Payment account ID (Cash/Bank)
+ * Used as default destination for incoming payments or source for outgoing
+ * @param {number} tenantId
+ * @returns {Promise<string|null>}
+ */
+export async function getDefaultPaymentAccountId(tenantId) {
+    // Try to find Cash on Hand (1001)
+    const cash = await prisma.account.findFirst({
+        where: {
+            tenantId,
+            code: '1001'
+        },
+        select: { id: true }
+    });
+    if (cash) return cash.id;
+
+    // Fallback to any payment eligible asset
+    const liquid = await prisma.account.findFirst({
+        where: {
+            tenantId,
+            isPaymentEligible: true,
+            type: 'ASSET'
+        },
+        select: { id: true }
+    });
+
+    return liquid ? liquid.id : null;
+}
+
 // ============================================
 // MASTER ASSET LOGIC (THE BRAIN)
 // ============================================
@@ -2214,5 +2299,8 @@ export default {
     createFixedAsset,
     depreciateAsset,
     disposeAsset,
+    getAccountsReceivableAccountId,
+    getDefaultRevenueAccountId,
+    getDefaultPaymentAccountId,
     ASSET_LOGIC_CONFIG
 };

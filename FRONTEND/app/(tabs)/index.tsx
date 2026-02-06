@@ -202,7 +202,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
 
             {/* 4. Pay Bill */}
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/analytics')}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/pay-supplier' as any)}>
               <View style={[styles.actionIcon, { backgroundColor: '#e0e7ff' }]}>
                 <Ionicons name="card-outline" size={24} color="#4338ca" />
               </View>
@@ -263,6 +263,22 @@ export default function HomeScreen() {
                 <Ionicons name="cube-outline" size={24} color="#d4b106" />
               </View>
               <Text style={styles.actionLabel}>Inventory</Text>
+            </TouchableOpacity>
+
+            {/* 11. Invoices (NEW) */}
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/invoices' as any)}>
+              <View style={[styles.actionIcon, { backgroundColor: '#e0f2fe' }]}>
+                <Ionicons name="document-text-outline" size={24} color="#0284c7" />
+              </View>
+              <Text style={styles.actionLabel}>Invoices</Text>
+            </TouchableOpacity>
+
+            {/* 12. Stock Value (NEW) */}
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/inventory-valuation' as any)}>
+              <View style={[styles.actionIcon, { backgroundColor: '#d1fae5' }]}>
+                <Ionicons name="trending-up" size={24} color="#059669" />
+              </View>
+              <Text style={styles.actionLabel}>Stock Value</Text>
             </TouchableOpacity>
           </View>
         </View>

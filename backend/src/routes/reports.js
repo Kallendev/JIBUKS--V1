@@ -353,4 +353,129 @@ router.get('/category-analysis', async (req, res) => {
     }
 });
 
+// ============================================
+// GET /api/reports/account-transactions/:accountId
+// Drill down into account details
+// ============================================
+router.get('/account-transactions/:accountId', async (req, res) => {
+    try {
+        const { tenantId } = req.user;
+        const accountId = parseInt(req.params.accountId);
+
+        // Extract basic query params
+        const { limit, offset } = req.query;
+
+        // Parse dates using existing helper
+        const { startDate, endDate } = parseDateRange(req.query);
+
+        // Validate account ownership
+        const account = await prisma.account.findFirst({
+            where: { id: accountId, tenantId }
+        });
+
+        if (!account) {
+            return res.status(404).json({ error: 'Account not found' });
+        }
+
+        // Fetch journal lines
+        const lines = await prisma.journalLine.findMany({
+            where: {
+                accountId,
+                journal: {
+                    status: 'POSTED',
+                    date: { gte: startDate, lte: endDate }
+                }
+            },
+            include: {
+                journal: {
+                    select: {
+                        date: true,
+                        description: true,
+                        reference: true,
+                        invoiceId: true,
+                        invoicePaymentId: true
+                    }
+                }
+            },
+            orderBy: {
+                journal: { date: 'desc' } // Newest first
+            },
+            take: parseInt(limit) || 50,
+            skip: parseInt(offset) || 0
+        });
+
+        const totalCount = await prisma.journalLine.count({
+            where: {
+                accountId,
+                journal: {
+                    status: 'POSTED',
+                    date: { gte: startDate, lte: endDate }
+                }
+            }
+        });
+
+        // Calculate Period Total
+        const aggregate = await prisma.journalLine.aggregate({
+            where: {
+                accountId,
+                journal: {
+                    status: 'POSTED',
+                    date: { gte: startDate, lte: endDate }
+                }
+            },
+            _sum: { debit: true, credit: true }
+        });
+
+        const totalDebit = Number(aggregate._sum.debit || 0);
+        const totalCredit = Number(aggregate._sum.credit || 0);
+
+        // Net change depends on account type
+        // ASSETS/EXPENSES: Debit is Increase (+), Credit is Decrease (-)
+        // LIABILITIES/EQUITY/INCOME: Credit is Increase (+), Debit is Decrease (-)
+        let netChange = 0;
+        if (['ASSET', 'EXPENSE'].includes(account.type)) {
+            netChange = totalDebit - totalCredit;
+        } else {
+            netChange = totalCredit - totalDebit;
+        }
+
+        res.json({
+            account: {
+                id: account.id,
+                name: account.name,
+                code: account.code,
+                type: account.type
+            },
+            period: { startDate, endDate },
+            transactions: lines.map(line => ({
+                id: line.id,
+                date: line.journal.date,
+                description: line.description || line.journal.description, // Prefer specific line desc, fallback to journal
+                debit: Number(line.debit),
+                credit: Number(line.credit),
+                amount: ['ASSET', 'EXPENSE'].includes(account.type)
+                    ? Number(line.debit) - Number(line.credit)
+                    : Number(line.credit) - Number(line.debit), // Signed amount for easy display
+                reference: line.journal.reference,
+                journalId: line.journalId,
+                invoiceId: line.journal.invoiceId
+            })),
+            totals: {
+                debit: totalDebit,
+                credit: totalCredit,
+                netChange
+            },
+            pagination: {
+                total: totalCount,
+                limit: parseInt(limit) || 50,
+                offset: parseInt(offset) || 0
+            }
+        });
+
+    } catch (error) {
+        console.error('Error fetching account transactions:', error);
+        res.status(500).json({ error: 'Failed to fetch account transactions' });
+    }
+});
+
 export default router;

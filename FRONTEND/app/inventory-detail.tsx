@@ -163,6 +163,16 @@ export default function InventoryDetailScreen() {
                             </View>
                             <Text style={styles.actionText}>Adjust</Text>
                         </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.actionCard}
+                            onPress={() => router.push(`/item-history?id=${item.id}` as any)}
+                        >
+                            <View style={[styles.actionIcon, { backgroundColor: '#fef3c7' }]}>
+                                <Ionicons name="time" size={24} color="#d97706" />
+                            </View>
+                            <Text style={styles.actionText}>History</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
 

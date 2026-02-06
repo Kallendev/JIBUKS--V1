@@ -15,10 +15,35 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import apiService from '@/services/api';
 
+// TypeScript interfaces
+interface InventoryItem {
+    id: number;
+    name: string;
+    sku: string;
+    category: string;
+    quantity: number;
+    unit: string;
+    costPrice: number;
+    sellingPrice: number;
+    stockValue: number;
+    reorderLevel: number;
+    isLowStock: boolean;
+}
+
+interface ValuationSummary {
+    totalItems: number;
+    totalCostValue: number;
+    totalRetailValue: number;
+}
+
+interface ValuationData {
+    summary: ValuationSummary;
+}
+
 export default function InventoryScreen() {
     const router = useRouter();
-    const [inventory, setInventory] = useState([]);
-    const [valuation, setValuation] = useState(null);
+    const [inventory, setInventory] = useState<InventoryItem[]>([]);
+    const [valuation, setValuation] = useState<ValuationData | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -32,9 +57,9 @@ export default function InventoryScreen() {
     const loadInventory = async () => {
         try {
             setLoading(true);
-            const params = showLowStock ? { lowStock: 'true' } : {};
-            const data = await apiService.request('/inventory', { params });
-            setInventory(data);
+            const endpoint = showLowStock ? '/inventory?lowStock=true' : '/inventory';
+            const data = await apiService.request<InventoryItem[]>(endpoint);
+            setInventory(data || []);
         } catch (error) {
             console.error('Error loading inventory:', error);
             Alert.alert('Error', 'Failed to load inventory');
@@ -45,7 +70,7 @@ export default function InventoryScreen() {
 
     const loadValuation = async () => {
         try {
-            const data = await apiService.request('/inventory/valuation/current');
+            const data = await apiService.request<ValuationData>('/inventory/valuation/current');
             setValuation(data);
         } catch (error) {
             console.error('Error loading valuation:', error);
@@ -58,7 +83,7 @@ export default function InventoryScreen() {
         setRefreshing(false);
     };
 
-    const formatCurrency = (amount) => {
+    const formatCurrency = (amount: number): string => {
         return `KES ${Number(amount).toLocaleString()}`;
     };
 
@@ -110,7 +135,11 @@ export default function InventoryScreen() {
             >
                 {/* Valuation Summary */}
                 {valuation && (
-                    <View style={styles.summaryContainer}>
+                    <TouchableOpacity
+                        style={styles.summaryContainer}
+                        onPress={() => router.push('/inventory-valuation' as any)}
+                        activeOpacity={0.8}
+                    >
                         <View style={styles.summaryCard}>
                             <Text style={styles.summaryLabel}>Total Items</Text>
                             <Text style={styles.summaryValue}>{valuation.summary.totalItems}</Text>
@@ -127,8 +156,34 @@ export default function InventoryScreen() {
                                 {formatCurrency(valuation.summary.totalRetailValue)}
                             </Text>
                         </View>
-                    </View>
+                    </TouchableOpacity>
                 )}
+
+                {/* Quick Actions */}
+                <View style={styles.quickActionsRow}>
+                    <TouchableOpacity
+                        style={styles.quickActionBtn}
+                        onPress={() => router.push('/inventory-valuation' as any)}
+                    >
+                        <Ionicons name="wallet" size={20} color="#10b981" />
+                        <Text style={styles.quickActionText}>Valuation</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.quickActionBtn}
+                        onPress={() => router.push('/cogs-report' as any)}
+                    >
+                        <Ionicons name="bar-chart" size={20} color="#ef4444" />
+                        <Text style={styles.quickActionText}>COGS</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.quickActionBtn}
+                        onPress={() => router.push('/credit-memo' as any)}
+                    >
+                        <Ionicons name="return-down-back" size={20} color="#f59e0b" />
+                        <Text style={styles.quickActionText}>Returns</Text>
+                    </TouchableOpacity>
+                </View>
+
 
                 {/* Search and Filter */}
                 <View style={styles.searchContainer}>
@@ -343,6 +398,33 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#1f2937',
     },
+    quickActionsRow: {
+        flexDirection: 'row',
+        paddingHorizontal: 16,
+        marginBottom: 16,
+        gap: 8,
+    },
+    quickActionBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        gap: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+    },
+    quickActionText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#374151',
+    },
     searchContainer: {
         flexDirection: 'row',
         paddingHorizontal: 16,
@@ -365,7 +447,6 @@ const styles = StyleSheet.create({
         marginLeft: 8,
         fontSize: 16,
         color: '#1f2937',
-        outlineStyle: 'none',
     },
     filterButton: {
         flexDirection: 'row',

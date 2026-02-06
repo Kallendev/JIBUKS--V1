@@ -27,7 +27,7 @@ export default function ProfitLossScreen() {
         loadData();
     }, [selectedPeriod]);
 
-    // ... existing toggleSection code ...
+
     const toggleSection = (section: string) => {
         const newExpanded = new Set(expandedSections);
         if (newExpanded.has(section)) {
@@ -64,6 +64,20 @@ export default function ProfitLossScreen() {
             startDate: startDate.toISOString().split('T')[0],
             endDate: endDate.toISOString().split('T')[0],
         };
+    };
+
+    const handleAccountPress = (accountId: string, accountName: string, accountCode: string) => {
+        const { startDate, endDate } = getPeriodDates();
+        router.push({
+            pathname: '/reports/account-details',
+            params: {
+                accountId,
+                accountName,
+                accountCode,
+                startDate,
+                endDate
+            }
+        });
     };
 
     const loadData = async () => {
@@ -194,10 +208,14 @@ export default function ProfitLossScreen() {
                             <View>
                                 {reportData?.income?.lines?.length > 0 ? (
                                     reportData.income.lines.map((line: any, index: number) => (
-                                        <View key={index} style={[styles.tableRow, index % 2 === 0 && styles.tableRowAlt]}>
+                                        <TouchableOpacity
+                                            key={index}
+                                            style={[styles.tableRow, index % 2 === 0 && styles.tableRowAlt]}
+                                            onPress={() => handleAccountPress(line.accountId, line.name, line.code)}
+                                        >
                                             <Text style={styles.accountName}>{line.name}</Text>
                                             <Text style={styles.amountText}>{formatCurrency(line.amount)}</Text>
-                                        </View>
+                                        </TouchableOpacity>
                                     ))
                                 ) : (
                                     <View style={styles.tableRow}>
@@ -234,10 +252,14 @@ export default function ProfitLossScreen() {
                             <View>
                                 {reportData?.expenses?.lines?.length > 0 ? (
                                     reportData.expenses.lines.map((line: any, index: number) => (
-                                        <View key={index} style={[styles.tableRow, index % 2 === 0 && styles.tableRowAlt]}>
+                                        <TouchableOpacity
+                                            key={index}
+                                            style={[styles.tableRow, index % 2 === 0 && styles.tableRowAlt]}
+                                            onPress={() => handleAccountPress(line.accountId, line.name, line.code)}
+                                        >
                                             <Text style={styles.accountName}>{line.name}</Text>
                                             <Text style={styles.amountText}>{formatCurrency(line.amount)}</Text>
-                                        </View>
+                                        </TouchableOpacity>
                                     ))
                                 ) : (
                                     <View style={styles.tableRow}>

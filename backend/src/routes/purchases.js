@@ -2,6 +2,7 @@ import express from 'express';
 import { prisma } from '../lib/prisma.js';
 import { verifyJWT } from '../middleware/auth.js';
 import { upload } from '../middleware/upload.js';
+import * as inventoryAccountingService from '../services/inventoryAccountingService.js';
 
 const router = express.Router();
 
@@ -385,31 +386,36 @@ router.post('/', upload.single('attachment'), async (req, res) => {
                 });
             }
 
-            // 5. Update inventory if items are inventory items
-            for (const item of items) {
-                if (item.inventoryItemId) {
-                    await tx.inventoryItem.update({
-                        where: { id: parseInt(item.inventoryItemId) },
-                        data: {
-                            quantity: {
-                                increment: item.quantity
-                            }
-                        }
+            // 5. Process inventory items with FULL accounting logic
+            // This creates proper inventory journal entries:
+            // DR: Inventory Asset (1201)
+            // CR: Accounts Payable (2000)
+            // And updates WAC (Weighted Average Cost)
+            const inventoryItems = items.filter(item => item.inventoryItemId);
+
+            if (inventoryItems.length > 0) {
+                try {
+                    const inventoryResult = await inventoryAccountingService.processInventoryPurchase({
+                        tenantId,
+                        userId,
+                        purchaseId: purchase.id,
+                        items: inventoryItems.map(item => ({
+                            inventoryItemId: item.inventoryItemId,
+                            quantity: Number(item.quantity),
+                            unitCost: Number(item.unitPrice)
+                        })),
+                        paymentAccountId: null, // Uses AP by default
+                        date: purchaseDate || new Date(),
                     });
 
-                    // Create stock movement
-                    await tx.stockMovement.create({
-                        data: {
-                            tenantId,
-                            itemId: parseInt(item.inventoryItemId),
-                            type: 'IN',
-                            quantity: item.quantity,
-                            unitCost: item.unitPrice,
-                            reference: `Purchase #${purchase.id}`,
-                            journalId: journal.id,
-                            createdById: userId
-                        }
+                    console.log(`[Purchases] Inventory accounting processed:`, {
+                        purchaseId: purchase.id,
+                        itemsProcessed: inventoryResult.movements?.length || 0,
+                        totalValue: inventoryResult.summary?.totalInventoryValue || 0
                     });
+                } catch (invError) {
+                    console.error('[Purchases] Inventory accounting error:', invError);
+                    // Continue without failing - inventory will still be updated below
                 }
             }
 
