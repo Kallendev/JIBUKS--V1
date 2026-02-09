@@ -6,8 +6,8 @@
   "private": true,
   "main": "src/server.js",
   "scripts": {
-    "dev": "nodemon src/server.js",
-    "start": "node src/server.js",
+    "start": "nodemon src/server.js",
+    "dev": "node src/server.js",
     "db:init": "node scripts/initDb.js",
     "seed": "node prisma/seed.js",
     "seed:assets": "node scripts/seed_assets.js",
