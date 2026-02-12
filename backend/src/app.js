@@ -26,6 +26,7 @@ import invoicesRoutes from './routes/invoices.js';
 import chequesRoutes from './routes/cheques.js';
 import transfersRoutes from './routes/transfers.js';
 import lendingRoutes from './routes/lending.js';
+import vatRatesRoutes from './routes/vat-rates.js';
 
 // Registered routes
 const app = express();
@@ -121,6 +122,7 @@ app.use('/api/invoices', invoicesRoutes);
 app.use('/api/cheques', chequesRoutes);
 app.use('/api/transfers', transfersRoutes);
 app.use('/api/lending', lendingRoutes);
+app.use('/api/vat-rates', vatRatesRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

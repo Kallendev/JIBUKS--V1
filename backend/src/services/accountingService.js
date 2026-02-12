@@ -676,6 +676,126 @@ export const FAMILY_COA_TEMPLATE = [
 
     // Other Standard Business (5000 series for COGS)
     { code: '5199', name: 'Uncategorized Expense', type: 'EXPENSE', description: 'Temporary holding account for expenses to be categorized', isSystem: true, subtype: 'operating_expense' },
+
+    // ============================================
+    // COMPREHENSIVE EXPENSE CATEGORIES (5100-5400)
+    // Additional detailed expense accounts
+    // ============================================
+    { code: '5100', name: 'Amortisation expense', type: 'EXPENSE', subtype: 'operating_expense', description: 'Periodic writeoff of intangible assets' },
+    { code: '5110', name: 'Bad debts', type: 'EXPENSE', subtype: 'operating_expense', description: 'Uncollectible receivables written off' },
+    { code: '5120', name: 'Bank charges', type: 'EXPENSE', subtype: 'operating_expense', description: 'Bank service fees and charges' },
+    { code: '5130', name: 'Commissions and fees', type: 'EXPENSE', subtype: 'operating_expense', description: 'Commissions paid to agents/brokers' },
+    { code: '5140', name: 'Dues and subscriptions', type: 'EXPENSE', subtype: 'operating_expense', description: 'Professional memberships and subscriptions' },
+    { code: '5150', name: 'Equipment rental', type: 'EXPENSE', subtype: 'operating_expense', description: 'Rental of equipment and machinery' },
+    { code: '5160', name: 'Income tax expense', type: 'EXPENSE', subtype: 'tax_expense', description: 'Corporate income tax expense' },
+    { code: '5170', name: 'Insurance - Disability', type: 'EXPENSE', subtype: 'operating_expense', description: 'Disability insurance premiums' },
+    { code: '5180', name: 'Insurance - General', type: 'EXPENSE', subtype: 'operating_expense', description: 'General business insurance' },
+    { code: '5190', name: 'Insurance - Liability', type: 'EXPENSE', subtype: 'operating_expense', description: 'Liability insurance coverage' },
+    { code: '5200', name: 'Interest expense', type: 'EXPENSE', subtype: 'financial_expense', description: 'Interest paid on loans and borrowings' },
+    { code: '5210', name: 'Legal and professional fees', type: 'EXPENSE', subtype: 'operating_expense', description: 'Lawyers, accountants, consultants' },
+    { code: '5220', name: 'Loss on discontinued operations, net of tax', type: 'EXPENSE', subtype: 'other_expense', description: 'Losses from discontinued business segments' },
+    { code: '5230', name: 'Management compensation', type: 'EXPENSE', subtype: 'payroll_expense', description: 'Management salaries and compensation' },
+    { code: '5240', name: 'Meals and entertainment', type: 'EXPENSE', subtype: 'operating_expense', description: 'Business meals and entertainment' },
+    { code: '5250', name: 'Office expenses', type: 'EXPENSE', subtype: 'operating_expense', description: 'General office operating expenses' },
+    { code: '5260', name: 'Other Types of Expenses-Advertising Expenses', type: 'EXPENSE', subtype: 'marketing_expense', description: 'Advertising and promotional costs' },
+    { code: '5270', name: 'Other general and administrative expenses', type: 'EXPENSE', subtype: 'operating_expense', description: 'Miscellaneous G&A expenses' },
+    { code: '5280', name: 'Other selling expenses', type: 'EXPENSE', subtype: 'selling_expense', description: 'Additional selling costs' },
+    { code: '5290', name: 'Payroll Expenses', type: 'EXPENSE', subtype: 'payroll_expense', description: 'Employee wages and salaries' },
+    { code: '5300', name: 'Purchases', type: 'EXPENSE', subtype: 'cogs', description: 'Inventory and goods purchases' },
+    { code: '5310', name: 'Rent or lease payments', type: 'EXPENSE', subtype: 'operating_expense', description: 'Rental/lease payments for property' },
+    { code: '5320', name: 'Repairs and Maintenance', type: 'EXPENSE', subtype: 'operating_expense', description: 'Repair and maintenance costs' },
+    { code: '5330', name: 'Shipping and delivery expense', type: 'EXPENSE', subtype: 'selling_expense', description: 'Outbound shipping and delivery' },
+    { code: '5340', name: 'Stationery and printing', type: 'EXPENSE', subtype: 'operating_expense', description: 'Office stationery and printing' },
+    { code: '5350', name: 'Supplies', type: 'EXPENSE', subtype: 'operating_expense', description: 'General business supplies' },
+    { code: '5360', name: 'Travel expenses - general and admin expenses', type: 'EXPENSE', subtype: 'operating_expense', description: 'Travel for admin purposes' },
+    { code: '5370', name: 'Travel expenses - selling expenses', type: 'EXPENSE', subtype: 'selling_expense', description: 'Travel for sales purposes' },
+    { code: '5380', name: 'Uncategorised Expense', type: 'EXPENSE', subtype: 'operating_expense', description: 'Unclassified expenses' },
+    { code: '5390', name: 'Utilities', type: 'EXPENSE', subtype: 'operating_expense', description: 'Electricity, water, gas' },
+    { code: '5400', name: 'Wage expenses', type: 'EXPENSE', subtype: 'payroll_expense', description: 'Hourly wage expenses' },
+    { code: '5410', name: 'Cost of sales', type: 'EXPENSE', subtype: 'cogs', description: 'Direct cost of goods sold' },
+    { code: '5420', name: 'Freight and delivery - COS', type: 'EXPENSE', subtype: 'cogs', description: 'Inbound freight costs' },
+
+    // ============================================
+    // ADDITIONAL OTHER INCOME (4400-4440)
+    // ============================================
+    { code: '4400', name: 'Dividend income', type: 'INCOME', subtype: 'other_income', description: 'Dividends received from investments' },
+    { code: '4410', name: 'Interest income', type: 'INCOME', subtype: 'other_income', description: 'Interest earned on deposits' },
+    { code: '4420', name: 'Loss on disposal of assets', type: 'INCOME', subtype: 'other_income', description: 'Gains/losses on asset disposal - contra', isContra: true },
+    { code: '4430', name: 'Other operating income (expenses)', type: 'INCOME', subtype: 'other_income', description: 'Miscellaneous operating income' },
+    { code: '4440', name: 'Unrealised loss on securities, net of tax', type: 'INCOME', subtype: 'other_income', description: 'Mark-to-market securities gains/losses' },
+
+    // ============================================
+    // ADDITIONAL INCOME/REVENUE (4150-4205)
+    // ============================================
+    { code: '4150', name: 'Billable Expense Income', type: 'INCOME', subtype: 'sales_revenue', description: 'Reimbursable expense income' },
+    { code: '4160', name: 'Revenue - General', type: 'INCOME', subtype: 'sales_revenue', description: 'General business revenue' },
+    { code: '4170', name: 'Sales - retail', type: 'INCOME', subtype: 'sales_revenue', description: 'Retail sales revenue' },
+    { code: '4180', name: 'Sales - wholesale', type: 'INCOME', subtype: 'sales_revenue', description: 'Wholesale sales revenue' },
+    { code: '4190', name: 'Sales of Product Income', type: 'INCOME', subtype: 'sales_revenue', description: 'Product sales' },
+    { code: '4205', name: 'Uncategorised Income', type: 'INCOME', subtype: 'other_income', description: 'Unclassified income' },
+
+    // ============================================
+    // ADDITIONAL CURRENT LIABILITIES (2460-2540)
+    // ============================================
+    { code: '2460', name: 'Accrued liabilities', type: 'LIABILITY', subtype: 'other_liability', description: 'General accrued liabilities' },
+    { code: '2470', name: 'Deferred Revenue', type: 'LIABILITY', subtype: 'deferred_revenue', description: 'Prepaid revenue not yet earned' },
+    { code: '2480', name: 'Dividends payable', type: 'LIABILITY', subtype: 'other_liability', description: 'Declared dividends not yet paid' },
+    { code: '2490', name: 'Income tax payable', type: 'LIABILITY', subtype: 'taxes_payable', description: 'Corporate tax owed' },
+    { code: '2520', name: 'Short-term debit', type: 'LIABILITY', subtype: 'loans_current', description: 'Short-term debt obligations' },
+    { code: '2530', name: 'VAT Control', type: 'LIABILITY', subtype: 'vat_payable', description: 'VAT control account' },
+    { code: '2540', name: 'VAT Suspense', type: 'LIABILITY', subtype: 'vat_payable', description: 'Temporary VAT holding' },
+
+    // ============================================
+    // ADDITIONAL LONG TERM LIABILITIES (2710-2740)
+    // ============================================
+    { code: '2710', name: 'Accrued holiday payable', type: 'LIABILITY', subtype: 'payroll_liability', description: 'Accrued vacation liability' },
+    { code: '2720', name: 'Accrued non-current liabilities', type: 'LIABILITY', subtype: 'other_lt_liability', description: 'Long-term accrued liabilities' },
+    { code: '2730', name: 'Liabilities related to assets held for sale', type: 'LIABILITY', subtype: 'other_lt_liability', description: 'Liabilities for assets held for sale' },
+    { code: '2740', name: 'Long-term debt', type: 'LIABILITY', subtype: 'loans_long_term', description: 'Long-term debt obligations' },
+
+    // ============================================
+    // ADDITIONAL CURRENT ASSETS (1250-1296)
+    // ============================================
+    { code: '1250', name: 'Allowance for bad debt', type: 'ASSET', subtype: 'contra_receivable', description: 'Bad debt provision', isContra: true },
+    { code: '1260', name: 'Available for sale assets (short-term)', type: 'ASSET', subtype: 'other_current_asset', description: 'Short-term marketable securities' },
+    { code: '1270', name: 'Inventory', type: 'ASSET', subtype: 'inventory', description: 'Stock on hand' },
+    { code: '1280', name: 'Inventory Asset', type: 'ASSET', subtype: 'inventory', description: 'Inventory asset account' },
+    { code: '1290', name: 'Prepaid expenses', type: 'ASSET', subtype: 'prepayment', description: 'Expenses paid in advance' },
+    { code: '1295', name: 'Uncategorised Asset', type: 'ASSET', subtype: 'other_asset', description: 'Unclassified assets' },
+
+    // ============================================
+    // ADDITIONAL OTHER ASSETS (1550-1585)
+    // ============================================
+    { code: '1550', name: 'Assets held for sale', type: 'ASSET', subtype: 'other_asset', description: 'Assets designated for sale' },
+    { code: '1560', name: 'Deferred tax assets', type: 'ASSET', subtype: 'other_asset', description: 'Future tax benefits' },
+    { code: '1570', name: 'Goodwill', type: 'ASSET', subtype: 'intangible', description: 'Business acquisition goodwill' },
+    { code: '1580', name: 'Intangibles', type: 'ASSET', subtype: 'intangible', description: 'Intangible assets' },
+    { code: '1585', name: 'Long-Term Investments', type: 'ASSET', subtype: 'investment', description: 'Long-term investment holdings' },
+
+    // ============================================
+    // ADDITIONAL FIXED ASSETS (1440-1450)
+    // ============================================
+    { code: '1440', name: 'Accumulated depreciation on property, plant and equipment', type: 'ASSET', subtype: 'contra_asset', description: 'Accumulated depreciation', isContra: true },
+    { code: '1450', name: 'Property, plant and equipment', type: 'ASSET', subtype: 'fixed_asset', description: 'Fixed assets' },
+
+    // ============================================
+    // ADDITIONAL EQUITY (3100-3140)
+    // ============================================
+    { code: '3100', name: 'Dividend disbursed', type: 'EQUITY', subtype: 'drawings', description: 'Dividends paid out', isContra: true },
+    { code: '3110', name: 'Equity in earnings of subsidiaries', type: 'EQUITY', subtype: 'retained_earnings', description: 'Share of subsidiary profits' },
+    { code: '3120', name: 'Other comprehensive income', type: 'EQUITY', subtype: 'retained_earnings', description: 'OCI items' },
+    { code: '3130', name: 'Retained Earnings', type: 'EQUITY', subtype: 'retained_earnings', description: 'Accumulated retained earnings' },
+    { code: '3140', name: 'Share capital', type: 'EQUITY', subtype: 'equity', description: 'Issued share capital' },
+
+    // ============================================
+    // ADDITIONAL BANK/CASH (1028)
+    // ============================================
+    { code: '1028', name: 'Cash and cash equivalents', type: 'ASSET', subtype: 'cash', description: 'Cash and near-cash items', isPaymentEligible: true },
+
+    // ============================================
+    // ADDITIONAL ACCOUNTS PAYABLE (2013)
+    // ============================================
+    { code: '2013', name: 'Accounts Payable (A/P)', type: 'LIABILITY', subtype: 'accounts_payable', description: 'Main trade payables account' },
 ];
 
 // ============================================
@@ -2282,10 +2402,294 @@ const ASSET_LOGIC_CONFIG = {
     "1699": { label: "Identifier", showQty: false, showSerial: true, depreciation: "NO", contraAccount: null }
 };
 
+// ============================================
+// ONBOARDING SEEDING - VAT RATES
+// ============================================
+
+/**
+ * Seed default VAT rates for new tenants
+ * Called automatically during user registration
+ */
+export async function seedVATRates(tenantId) {
+    console.log(`[Seeding] VAT Rates for tenant ${tenantId}...`);
+
+    const vatRates = [
+        {
+            name: '16.0% S (16%)',
+            code: 'S',
+            rate: 16.0,
+            description: 'Standard VAT rate 16% - Most goods and services in Kenya',
+            isActive: true
+        },
+        {
+            name: 'Exempt Purchase (0%)',
+            code: 'EXEMPT',
+            rate: 0.0,
+            description: 'Exempt purchases - Financial services, education, healthcare, residential rent',
+            isActive: true
+        },
+        {
+            name: '0.0% Z (0%)',
+            code: 'Z',
+            rate: 0.0,
+            description: 'Zero-rated supplies - Exports, certain foodstuffs, agricultural supplies',
+            isActive: true
+        },
+        {
+            name: '16.0% S Import (16%)',
+            code: 'S-IMPORT',
+            rate: 16.0,
+            description: 'Standard VAT on imports - Imported goods',
+            isActive: true
+        },
+        {
+            name: 'No VAT (0%)',
+            code: 'NO-VAT',
+            rate: 0.0,
+            description: 'No VAT - Out of scope transactions',
+            isActive: true
+        },
+        {
+            name: '16.0% S - RC Imported Services (0%)',
+            code: 'S-RC',
+            rate: 0.0,
+            description: 'Reverse Charge on imported services - Recipient accounts for VAT',
+            isActive: true
+        },
+        {
+            name: '8.0% Petrol (8%)',
+            code: 'PETROL',
+            rate: 8.0,
+            description: 'Reduced VAT rate for petroleum products - 8%',
+            isActive: true
+        }
+    ];
+
+    let created = 0;
+    for (const vat of vatRates) {
+        const existing = await prisma.vatRate.findFirst({
+            where: {
+                tenantId,
+                code: vat.code
+            }
+        });
+
+        if (!existing) {
+            await prisma.vatRate.create({
+                data: {
+                    tenantId,
+                    ...vat
+                }
+            });
+            created++;
+        }
+    }
+
+    console.log(`[Seeding] ✅ Created ${created} VAT rates`);
+    return created;
+}
+
+// ============================================
+// ONBOARDING SEEDING - DEFAULT SUPPLIERS
+// ============================================
+
+/**
+ * Seed default sample suppliers for new tenants
+ * Called automatically during user registration
+ */
+export async function seedDefaultSuppliers(tenantId) {
+    console.log(`[Seeding] Default Suppliers for tenant ${tenantId}...`);
+
+    const suppliers = [
+        // Utilities
+        {
+            name: 'Kenya Power (KPLC)',
+            email: 'info@kplc.co.ke',
+            phone: '+254703070707',
+            address: 'Nairobi, Kenya',
+            paymentTerms: 'DUE_ON_RECEIPT',
+            balance: 0,
+            isActive: true
+        },
+        {
+            name: 'Nairobi Water Company',
+            email: 'info@nairobiwater.co.ke',
+            phone: '+254202757000',
+            address: 'Nairobi, Kenya',
+            paymentTerms: 'DUE_ON_RECEIPT',
+            balance: 0,
+            isActive: true
+        },
+
+        // Telecommunications
+        {
+            name: 'Safaricom PLC',
+            email: 'care@safaricom.co.ke',
+            phone: '+254722000000',
+            address: 'Nairobi, Kenya',
+            paymentTerms: 'DUE_ON_RECEIPT',
+            balance: 0,
+            isActive: true
+        },
+        {
+            name: 'Airtel Kenya',
+            email: 'customer.care@ke.airtel.com',
+            phone: '+254730100000',
+            address: 'Nairobi, Kenya',
+            paymentTerms: 'DUE_ON_RECEIPT',
+            balance: 0,
+            isActive: true
+        },
+        {
+            name: 'Telkom Kenya',
+            email: 'customercare@telkom.co.ke',
+            phone: '+254200200020',
+            address: 'Nairobi, Kenya',
+            paymentTerms: 'NET_30',
+            balance: 0,
+            isActive: true
+        },
+
+        // Fuel Stations
+        {
+            name: 'Total Energies Kenya',
+            email: 'customerservice@totalenergies.co.ke',
+            phone: '+254709943000',
+            address: 'Nairobi, Kenya',
+            paymentTerms: 'DUE_ON_RECEIPT',
+            balance: 0,
+            isActive: true
+        },
+        {
+            name: 'Shell Kenya',
+            email: 'customer.service@shell.com',
+            phone: '+254203892000',
+            address: 'Nairobi, Kenya',
+            paymentTerms: 'DUE_ON_RECEIPT',
+            balance: 0,
+            isActive: true
+        },
+
+        // Supermarkets & Retail
+        {
+            name: 'Naivas Supermarket',
+            email: 'info@naivas.co.ke',
+            phone: '+254709170000',
+            address: 'Nairobi, Kenya',
+            paymentTerms: 'DUE_ON_RECEIPT',
+            balance: 0,
+            isActive: true
+        },
+        {
+            name: 'Carrefour Kenya',
+            email: 'customerservice@carrefourkenya.com',
+            phone: '+254709598000',
+            address: 'Nairobi, Kenya',
+            paymentTerms: 'DUE_ON_RECEIPT',
+            balance: 0,
+            isActive: true
+        },
+        {
+            name: 'QuickMart Supermarket',
+            email: 'info@quickmart.co.ke',
+            phone: '+254700123456',
+            address: 'Nairobi, Kenya',
+            paymentTerms: 'DUE_ON_RECEIPT',
+            balance: 0,
+            isActive: true
+        },
+
+        // Hardware & Construction
+        {
+            name: 'Tile & Carpet Centre',
+            email: 'info@tileandcarpet.com',
+            phone: '+254202714141',
+            address: 'Nairobi, Kenya',
+            paymentTerms: 'NET_30',
+            balance: 0,
+            isActive: true
+        },
+        {
+            name: 'Buildmart Kenya',
+            email: 'info@buildmart.co.ke',
+            phone: '+254709200300',
+            address: 'Nairobi, Kenya',
+            paymentTerms: 'NET_30',
+            balance: 0,
+            isActive: true
+        },
+
+        // Office Supplies & Stationery
+        {
+            name: 'Stationery Supplies Ltd',
+            email: 'sales@stationery.co.ke',
+            phone: '+254722334455',
+            address: 'Nairobi, Kenya',
+            paymentTerms: 'NET_30',
+            balance: 0,
+            isActive: true
+        },
+        {
+            name: 'Office World Kenya',
+            email: 'info@officeworld.co.ke',
+            phone: '+254733445566',
+            address: 'Nairobi, Kenya',
+            paymentTerms: 'NET_30',
+            balance: 0,
+            isActive: true
+        },
+
+        // Professional Services
+        {
+            name: 'KRA (Kenya Revenue Authority)',
+            email: 'callcentre@kra.go.ke',
+            phone: '+254711099999',
+            address: 'Nairobi, Kenya',
+            paymentTerms: 'DUE_ON_RECEIPT',
+            balance: 0,
+            isActive: true
+        },
+        {
+            name: 'General Supplier',
+            email: 'supplier@general.co.ke',
+            phone: '+254700000000',
+            address: 'Nairobi, Kenya',
+            paymentTerms: 'NET_30',
+            balance: 0,
+            isActive: true
+        }
+    ];
+
+    let created = 0;
+    for (const supplier of suppliers) {
+        const existing = await prisma.vendor.findFirst({
+            where: {
+                tenantId,
+                email: supplier.email
+            }
+        });
+
+        if (!existing) {
+            await prisma.vendor.create({
+                data: {
+                    tenantId,
+                    ...supplier
+                }
+            });
+            created++;
+        }
+    }
+
+    console.log(`[Seeding] ✅ Created ${created} default suppliers`);
+    return created;
+}
+
 export default {
     seedFamilyCoA,
     seedFamilyCategories,
     seedFamilyPaymentMethods,
+    seedVATRates,
+    seedDefaultSuppliers,
     getAccountMapping,
     resolveAccountIds,
     createJournalEntry,

@@ -325,39 +325,70 @@ router.post('/', upload.single('attachment'), async (req, res) => {
                 });
             }
 
-            // Add tax if applicable
-            if (tax > 0) {
-                const taxAccount = await tx.account.findFirst({
+            // Process VAT (Input VAT = Recoverable = ASSET)
+            // Calculate total VAT from all line items
+            const totalVAT = items.reduce((sum, item) => sum + (Number(item.vatAmount) || 0), 0);
+
+            if (totalVAT > 0) {
+                // Find VAT Receivable Account (Input VAT = Asset)
+                const vatReceivableAccount = await tx.account.findFirst({
                     where: {
                         tenantId,
-                        type: 'EXPENSE',
-                        name: { contains: 'Tax', mode: 'insensitive' }
+                        OR: [
+                            { code: '1157' }, // VAT Receivable (Input VAT)
+                            {
+                                type: 'ASSET',
+                                subtype: 'tax_receivable',
+                                name: { contains: 'VAT', mode: 'insensitive' }
+                            }
+                        ]
                     }
                 });
 
-                if (taxAccount) {
+                if (!vatReceivableAccount) {
+                    console.warn('⚠️ VAT Receivable account (1157) not found. VAT will not be recorded.');
+                    console.warn('   Please run: node backend/scripts/seed_assets.js');
+                } else {
+                    // Debit: VAT Receivable (Asset - Balance Sheet)
+                    // This is INPUT VAT we can claim back from KRA
                     await tx.journalLine.create({
                         data: {
                             journalId: journal.id,
-                            accountId: taxAccount.id,
-                            debit: tax,
+                            accountId: vatReceivableAccount.id,
+                            debit: totalVAT,
                             credit: 0,
-                            description: 'Purchase Tax'
+                            description: `Input VAT - ${purchase.billNumber || `Purchase #${purchase.id}`}`
                         }
                     });
+
+                    console.log(`✅ Input VAT recorded: KES ${totalVAT.toFixed(2)} → VAT Receivable (${vatReceivableAccount.code})`);
                 }
             }
 
-            // Credit: Accounts Payable (total amount)
+            // Recalculate total including VAT
+            const totalWithVAT = subtotal + totalVAT;
+
+            // Credit: Accounts Payable (total amount including VAT)
             await tx.journalLine.create({
                 data: {
                     journalId: journal.id,
                     accountId: accountsPayable.id,
                     debit: 0,
-                    credit: total,
+                    credit: totalWithVAT,
                     description: `Accounts Payable - ${purchase.billNumber || `#${purchase.id}`}`
                 }
             });
+
+            // Update purchase record with correct totals
+            await tx.purchase.update({
+                where: { id: purchase.id },
+                data: {
+                    subtotal: subtotal,
+                    tax: totalVAT,  // This is VAT amount
+                    total: totalWithVAT  // Base + VAT
+                }
+            });
+
 
             // 4. Update vendor balance if vendor exists
             if (vendorId) {
@@ -365,7 +396,7 @@ router.post('/', upload.single('attachment'), async (req, res) => {
                     where: { id: parseInt(vendorId) },
                     data: {
                         balance: {
-                            increment: total
+                            increment: totalWithVAT
                         }
                     }
                 });
@@ -375,16 +406,17 @@ router.post('/', upload.single('attachment'), async (req, res) => {
                     where: { vendorId: parseInt(vendorId) },
                     create: {
                         vendorId: parseInt(vendorId),
-                        totalPurchases: total,
+                        totalPurchases: totalWithVAT,
                         totalPaid: 0,
                         lastPurchaseDate: purchaseDate ? new Date(purchaseDate) : new Date()
                     },
                     update: {
-                        totalPurchases: { increment: total },
+                        totalPurchases: { increment: totalWithVAT },
                         lastPurchaseDate: purchaseDate ? new Date(purchaseDate) : new Date()
                     }
                 });
             }
+
 
             // 5. Process inventory items with FULL accounting logic
             // This creates proper inventory journal entries:
