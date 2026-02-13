@@ -13,10 +13,49 @@ async function listUsers(req, res, next) {
         id: true,
         name: true,
         email: true,
+        role: true,
         avatarUrl: true,
         isActive: true,
-        tenantId: true,
         createdAt: true,
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            tenantType: true
+          }
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(users);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Get ALL users in the database (unfiltered - for Super Admin/Testing)
+ */
+async function listAllUsersDatabase(req, res, next) {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        avatarUrl: true,
+        isActive: true,
+        createdAt: true,
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            tenantType: true
+          }
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -63,4 +102,4 @@ async function createUser(req, res, next) {
   }
 }
 
-export { listUsers, createUser };
+export { listUsers, createUser, listAllUsersDatabase };

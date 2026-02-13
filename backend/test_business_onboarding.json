@@ -1,0 +1,12 @@
+{
+    "businessName": "Doe Enterprises Ltd",
+    "industry": "Retail Shop / Mini-mart",
+    "salesType": "both",
+    "address": "123 Business Lane, Nairobi",
+    "phoneNumber": "+254712345678",
+    "email": "contact@doeent.com",
+    "currency": "KES",
+    "yearStart": "January",
+    "vatChoice": "yes",
+    "styleChoice": "detailed"
+}

@@ -1,3 +1,4 @@
+import './env.js'; // Load environment variables first
 import app from './app.js';
 import { prisma } from './lib/prisma.js';
 // Server initialization

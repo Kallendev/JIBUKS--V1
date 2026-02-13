@@ -213,9 +213,15 @@ async function register(req, res, next) {
  */
 async function refreshToken(req, res, next) {
   try {
-    const { refreshToken } = req.body;
+    let { refreshToken } = req.body;
     if (!refreshToken) {
       return res.status(400).json({ error: 'refreshToken required' });
+    }
+
+    // Robustness: Trim and remove "Bearer " prefix if accidentally included
+    refreshToken = refreshToken.trim();
+    if (refreshToken.toLowerCase().startsWith('bearer ')) {
+      refreshToken = refreshToken.slice(7).trim();
     }
 
     try {
@@ -229,6 +235,7 @@ async function refreshToken(req, res, next) {
 
       res.json({ accessToken: newAccessToken });
     } catch (err) {
+      console.error('[Auth] Refresh token verification failed:', err.message);
       res.status(401).json({ error: 'Invalid refresh token' });
     }
   } catch (err) {

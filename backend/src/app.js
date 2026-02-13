@@ -14,6 +14,7 @@ import dashboardRoutes from './routes/dashboard.js';
 import goalsRoutes from './routes/goals.js';
 import accountsRoutes from './routes/accounts.js';
 import reportsRoutes from './routes/reports.js';
+import businessRoutes from './routes/business.js';
 
 // Professional Accounting Routes
 import vendorsRoutes from './routes/vendors.js';
@@ -110,6 +111,8 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/goals', goalsRoutes);
 app.use('/api/accounts', accountsRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/business', businessRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Professional Accounting Routes
 app.use('/api/vendors', vendorsRoutes);
