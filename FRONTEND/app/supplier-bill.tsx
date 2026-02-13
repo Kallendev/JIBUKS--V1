@@ -408,48 +408,252 @@ export default function SupplierBillScreen() {
     );
 }
 
-// Simple JS Date Picker Component (Reused)
+// Simple JS Date Picker Component (iOS Optimized)
 const CustomDatePicker = ({ visible, onClose, date, onChange, title }: any) => {
     const [tempDate, setTempDate] = useState(date || new Date());
+
     const currentYear = tempDate.getFullYear();
     const currentMonth = tempDate.getMonth();
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
     const changeMonth = (increment: number) => {
         const newDate = new Date(tempDate);
         newDate.setMonth(newDate.getMonth() + increment);
         setTempDate(newDate);
     };
-    const confirmDate = () => { onChange(tempDate); onClose(); };
+
+    const confirmDate = () => {
+        onChange(tempDate);
+        onClose();
+    };
+
+    // Add empty cells for days before first day of month
+    const emptyDays = Array.from({ length: firstDayOfMonth }, (_, i) => i);
+
     return (
-        <Modal visible={visible} transparent animationType="fade">
-            <View style={styles.modalOverlay}>
-                <View style={[styles.modal, { maxHeight: 'auto' }]}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>{title}</Text>
-                        <TouchableOpacity onPress={onClose}><Ionicons name="close" size={24} color="#1e293b" /></TouchableOpacity>
+        <Modal visible={visible} transparent animationType="slide">
+            <View style={datePickerStyles.overlay}>
+                <View style={datePickerStyles.container}>
+                    {/* Header */}
+                    <View style={datePickerStyles.header}>
+                        <Text style={datePickerStyles.title}>{title}</Text>
+                        <TouchableOpacity onPress={onClose} style={datePickerStyles.closeButton}>
+                            <Ionicons name="close" size={24} color="#1e293b" />
+                        </TouchableOpacity>
                     </View>
-                    <View style={{ padding: 20 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <TouchableOpacity onPress={() => changeMonth(-1)} style={{ padding: 10 }}><Ionicons name="chevron-back" size={24} color="#122f8a" /></TouchableOpacity>
-                            <Text style={{ fontSize: 18, fontWeight: '700', color: '#1e293b' }}>{months[tempDate.getMonth()]} {tempDate.getFullYear()}</Text>
-                            <TouchableOpacity onPress={() => changeMonth(1)} style={{ padding: 10 }}><Ionicons name="chevron-forward" size={24} color="#122f8a" /></TouchableOpacity>
-                        </View>
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                            {days.map(day => (
-                                <TouchableOpacity key={day} style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'center', borderRadius: 20, backgroundColor: tempDate.getDate() === day ? '#122f8a' : '#f1f5f9' }} onPress={() => { const newDate = new Date(tempDate); newDate.setDate(day); setTempDate(newDate); }}>
-                                    <Text style={{ color: tempDate.getDate() === day ? '#fff' : '#334155', fontWeight: tempDate.getDate() === day ? '700' : '400' }}>{day}</Text>
-                                </TouchableOpacity>
+
+                    {/* Month/Year Navigation */}
+                    <View style={datePickerStyles.monthNav}>
+                        <TouchableOpacity
+                            onPress={() => changeMonth(-1)}
+                            style={datePickerStyles.navButton}
+                        >
+                            <Ionicons name="chevron-back" size={24} color="#122f8a" />
+                        </TouchableOpacity>
+
+                        <Text style={datePickerStyles.monthYear}>
+                            {months[tempDate.getMonth()]} {tempDate.getFullYear()}
+                        </Text>
+
+                        <TouchableOpacity
+                            onPress={() => changeMonth(1)}
+                            style={datePickerStyles.navButton}
+                        >
+                            <Ionicons name="chevron-forward" size={24} color="#122f8a" />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Week Days Header */}
+                    <View style={datePickerStyles.weekDaysRow}>
+                        {weekDays.map((day, idx) => (
+                            <View key={idx} style={datePickerStyles.weekDayCell}>
+                                <Text style={datePickerStyles.weekDayText}>{day}</Text>
+                            </View>
+                        ))}
+                    </View>
+
+                    {/* Calendar Days */}
+                    <ScrollView showsVerticalScrollIndicator={false}>
+                        <View style={datePickerStyles.daysGrid}>
+                            {/* Empty cells before first day */}
+                            {emptyDays.map(i => (
+                                <View key={`empty-${i}`} style={datePickerStyles.dayCell} />
                             ))}
+
+                            {/* Actual days */}
+                            {days.map(day => {
+                                const isSelected = tempDate.getDate() === day;
+                                const isToday = new Date().getDate() === day &&
+                                    new Date().getMonth() === tempDate.getMonth() &&
+                                    new Date().getFullYear() === tempDate.getFullYear();
+
+                                return (
+                                    <TouchableOpacity
+                                        key={day}
+                                        style={[
+                                            datePickerStyles.dayCell,
+                                            isSelected && datePickerStyles.selectedDay,
+                                            isToday && !isSelected && datePickerStyles.todayDay
+                                        ]}
+                                        onPress={() => {
+                                            const newDate = new Date(tempDate);
+                                            newDate.setDate(day);
+                                            setTempDate(newDate);
+                                        }}
+                                    >
+                                        <Text style={[
+                                            datePickerStyles.dayText,
+                                            isSelected && datePickerStyles.selectedDayText,
+                                            isToday && !isSelected && datePickerStyles.todayDayText
+                                        ]}>
+                                            {day}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </View>
-                        <TouchableOpacity style={{ backgroundColor: '#122f8a', marginTop: 20, padding: 16, borderRadius: 12, alignItems: 'center' }} onPress={confirmDate}><Text style={{ color: '#fff', fontWeight: 'bold' }}>Confirm Date</Text></TouchableOpacity>
-                    </View>
+                    </ScrollView>
+
+                    {/* Confirm Button */}
+                    <TouchableOpacity
+                        style={datePickerStyles.confirmButton}
+                        onPress={confirmDate}
+                    >
+                        <Text style={datePickerStyles.confirmText}>
+                            Confirm Date
+                        </Text>
+                    </TouchableOpacity>
                 </View>
             </View>
         </Modal>
     );
 };
+
+// Date Picker Styles (Separate for clarity)
+const datePickerStyles = StyleSheet.create({
+    overlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'flex-end',
+    },
+    container: {
+        backgroundColor: '#ffffff',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+        maxHeight: '75%',
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f1f5f9',
+    },
+    title: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1e293b',
+    },
+    closeButton: {
+        padding: 8,
+        backgroundColor: '#f8fafc',
+        borderRadius: 20,
+    },
+    monthNav: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+    },
+    navButton: {
+        padding: 8,
+        backgroundColor: '#eff6ff',
+        borderRadius: 12,
+    },
+    monthYear: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1e293b',
+    },
+    weekDaysRow: {
+        flexDirection: 'row',
+        paddingHorizontal: 12,
+        paddingBottom: 8,
+        backgroundColor: '#f8fafc',
+    },
+    weekDayCell: {
+        flex: 1,
+        alignItems: 'center',
+        paddingVertical: 8,
+    },
+    weekDayText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#64748b',
+        textTransform: 'uppercase',
+    },
+    daysGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        paddingHorizontal: 12,
+        paddingTop: 8,
+    },
+    dayCell: {
+        width: `${100 / 7}%`,
+        aspectRatio: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 4,
+    },
+    selectedDay: {
+        backgroundColor: '#122f8a',
+        borderRadius: 12,
+    },
+    todayDay: {
+        borderWidth: 2,
+        borderColor: '#fe9900',
+        borderRadius: 12,
+    },
+    dayText: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#334155',
+    },
+    selectedDayText: {
+        color: '#ffffff',
+        fontWeight: '700',
+    },
+    todayDayText: {
+        color: '#fe9900',
+        fontWeight: '700',
+    },
+    confirmButton: {
+        marginHorizontal: 20,
+        marginTop: 16,
+        backgroundColor: '#122f8a',
+        paddingVertical: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+        shadowColor: '#122f8a',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    confirmText: {
+        color: '#ffffff',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+});
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },

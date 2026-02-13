@@ -3,7 +3,13 @@ import jwt from 'jsonwebtoken';
 import { generateToken, generateRefreshToken, JWT_SECRET } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { sendEmail } from '../services/emailService.js';
-import { seedFamilyCoA, seedFamilyCategories, seedFamilyPaymentMethods } from '../services/accountingService.js';
+import {
+  seedFamilyCoA,
+  seedFamilyCategories,
+  seedFamilyPaymentMethods,
+  seedVATRates,
+  seedDefaultSuppliers
+} from '../services/accountingService.js';
 import crypto from 'crypto';
 
 // Use lower salt rounds in development for faster login
@@ -146,6 +152,24 @@ async function register(req, res, next) {
       } catch (pmError) {
         console.error('[Auth] Failed to seed payment methods:', pmError);
         // Don't fail registration if payment method seeding fails
+      }
+
+      // Seed VAT Rates for the new tenant
+      try {
+        await seedVATRates(tenant.id);
+        console.log(`[Auth] Seeded VAT rates for new tenant ${tenant.id}`);
+      } catch (vatError) {
+        console.error('[Auth] Failed to seed VAT rates:', vatError);
+        // Don't fail registration if VAT seeding fails
+      }
+
+      // Seed Default Suppliers for the new tenant
+      try {
+        await seedDefaultSuppliers(tenant.id);
+        console.log(`[Auth] Seeded default suppliers for new tenant ${tenant.id}`);
+      } catch (supplierError) {
+        console.error('[Auth] Failed to seed suppliers:', supplierError);
+        // Don't fail registration if supplier seeding fails
       }
     }
 

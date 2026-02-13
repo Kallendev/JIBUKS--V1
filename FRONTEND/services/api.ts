@@ -1218,6 +1218,64 @@ class ApiService {
       body: JSON.stringify(data),
     });
   }
+
+  // ============================================
+  // VAT RATES - Tax Configuration
+  // ============================================
+
+  /**
+   * Get all active VAT rates for the tenant
+   */
+  async getVatRates(): Promise<any[]> {
+    return this.request<any[]>('/vat-rates');
+  }
+
+  /**
+   * Get specific VAT rate by ID
+   */
+  async getVatRate(id: string | number): Promise<any> {
+    return this.request<any>(`/vat-rates/${id}`);
+  }
+
+  /**
+   * Create a new VAT rate
+   */
+  async createVatRate(data: {
+    name: string;
+    rate: number;
+    code: string;
+    description?: string;
+    isActive?: boolean;
+  }): Promise<any> {
+    return this.request<any>('/vat-rates', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Update an existing VAT rate
+   */
+  async updateVatRate(id: string | number, data: {
+    name?: string;
+    rate?: number;
+    description?: string;
+    isActive?: boolean;
+  }): Promise<any> {
+    return this.request<any>(`/vat-rates/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Delete a VAT rate
+   */
+  async deleteVatRate(id: string | number): Promise<any> {
+    return this.request<any>(`/vat-rates/${id}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 export const apiService = new ApiService(API_BASE_URL);
